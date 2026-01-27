@@ -1,26 +1,422 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Simple scroll fix - no complex overrides needed since CategoryFilter doesn't use Portal anymore */
+html {
+  overflow-y: scroll;
 }
 
 body {
-  background: var(--background);
+  overflow-x: hidden;
+}
+
+/* Base Theme (Classic - Light) */
+:root {
+  --background: #fdfbf7;
+  /* Cream Paper */
+  --foreground: #2d2a26;
+  /* Ink Black */
+  --card: #ffffff;
+  --card-foreground: #2d2a26;
+  --popover: #ffffff;
+  --popover-foreground: #2d2a26;
+  --primary: #2d2a26;
+  --primary-foreground: #fdfbf7;
+  --secondary: #e6e2dd;
+  --secondary-foreground: #2d2a26;
+  --muted: #f0ebe5;
+  --muted-foreground: #787570;
+  --accent: #d4a373;
+  /* Gold */
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e6e2dd;
+  --input: #e6e2dd;
+  --ring: #d4a373;
+  --radius: 0.5rem;
+}
+
+/* Dark Mode (Classic - Luxury Dark) */
+.dark {
+  --background: #121212;
+  --foreground: #e6e2dd;
+  --card: #1c1c1c;
+  --card-foreground: #e6e2dd;
+  --popover: #1c1c1c;
+  --popover-foreground: #e6e2dd;
+  --primary: #d4a373;
+  /* Gold Primary for Luxury */
+  --primary-foreground: #121212;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #e6e2dd;
+  --muted: #2a2a2a;
+  --muted-foreground: #a1a1aa;
+  --accent: #d4a373;
+  --accent-foreground: #121212;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Midnight Theme                                                             */
+/* -------------------------------------------------------------------------- */
+
+/* Light Mode (Soft Cloud / Business) */
+[data-theme='midnight'] {
+  --background: #f1f5f9;
+  /* Softer Grey-Blue (Slate 100) instead of Stark White */
+  --foreground: #334155;
+  /* Softer Navy Text */
+  --card: #ffffff;
+  --card-foreground: #334155;
+  --popover: #ffffff;
+  --popover-foreground: #334155;
+  --primary: #475569;
+  /* Slate 600 */
+  --primary-foreground: #f8fafc;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #334155;
+  --muted: #cbd5e1;
+  /* Darkened to Slate 300 for outer background */
+  --muted-foreground: #64748b;
+  --accent: #d4a373;
+  --accent-foreground: #0f172a;
+  --border: #cbd5e1;
+  /* Softer Border */
+  --input: #cbd5e1;
+  --ring: #475569;
+}
+
+/* Dark Mode (Deep Navy / Luxury) */
+.dark[data-theme='midnight'],
+[data-theme='midnight'].dark {
+  --background: #020617;
+  /* Deepest Navy */
+  --foreground: #f8fafc;
+  --card: #0f172a;
+  /* Slate 900 */
+  --card-foreground: #f8fafc;
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+  --primary: #e2e8f0;
+  /* Silvery Slate */
+  --primary-foreground: #020617;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #d4a373;
+  /* Gold accents */
+  --accent-foreground: #020617;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #e2e8f0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Emerald Theme                                                              */
+/* -------------------------------------------------------------------------- */
+
+/* Light Mode (Soft Sage / Natural) */
+[data-theme='emerald'] {
+  --background: #f0fdf4;
+  /* Very Soft Green-White */
+  --foreground: #166534;
+  /* Softer Green Text */
+  --card: #ffffff;
+  --card-foreground: #166534;
+  --popover: #ffffff;
+  --popover-foreground: #166534;
+  --primary: #15803d;
+  /* Emerald 700 */
+  --primary-foreground: #ffffff;
+  --secondary: #dcfce7;
+  --secondary-foreground: #166534;
+  --muted: #86efac;
+  /* Darkened to Green 300 */
+  --muted-foreground: #15803d;
+  --accent: #d4a373;
+  --accent-foreground: #064e3b;
+  --border: #86efac;
+  /* Softer Border */
+  --input: #86efac;
+  --ring: #15803d;
+}
+
+/* Dark Mode (Deep Jungle / Luxury) */
+.dark[data-theme='emerald'],
+[data-theme='emerald'].dark {
+  --background: #02120b;
+  /* Very Dark Green */
+  --foreground: #ecfdf5;
+  --card: #062c1e;
+  --card-foreground: #ecfdf5;
+  --popover: #062c1e;
+  --popover-foreground: #ecfdf5;
+  --primary: #10b981;
+  /* Emerald 500 */
+  --primary-foreground: #020617;
+  --secondary: #064e3b;
+  --secondary-foreground: #ecfdf5;
+  --muted: #064e3b;
+  --muted-foreground: #6ee7b7;
+  --accent: #d4a373;
+  --accent-foreground: #020617;
+  --border: #064e3b;
+  --input: #064e3b;
+  --ring: #10b981;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Royal Theme                                                                */
+/* -------------------------------------------------------------------------- */
+
+/* Light Mode (Warm Lilac / Elegant) */
+[data-theme='royal'] {
+  --background: #faf5ff;
+  /* Softest Purple White */
+  --foreground: #581c87;
+  /* Softer Purple Text (Purple 900) */
+  --card: #ffffff;
+  --card-foreground: #581c87;
+  --popover: #ffffff;
+  --popover-foreground: #581c87;
+  --primary: #7e22ce;
+  /* Purple 700 */
+  --primary-foreground: #ffffff;
+  --secondary: #f3e8ff;
+  --secondary-foreground: #581c87;
+  --muted: #d8b4fe;
+  /* Darkened to Purple 300 */
+  --muted-foreground: #9333ea;
+  --accent: #d4a373;
+  --accent-foreground: #3b0764;
+  --border: #d8b4fe;
+  --input: #d8b4fe;
+  --ring: #7e22ce;
+}
+
+/* Dark Mode (Deep Violet-Black / Luxury) */
+.dark[data-theme='royal'],
+[data-theme='royal'].dark {
+  --background: #0f0518;
+  /* Deepest Violet-Black */
+  --foreground: #f3e8ff;
+  --card: #1e0b36;
+  /* Dark Violet */
+  --card-foreground: #f3e8ff;
+  --popover: #1e0b36;
+  --popover-foreground: #f3e8ff;
+  --primary: #d4a373;
+  /* Gold Primary */
+  --primary-foreground: #0f0518;
+  --secondary: #2e1065;
+  --secondary-foreground: #f3e8ff;
+  --muted: #2e1065;
+  --muted-foreground: #a78bfa;
+  --accent: #d4a373;
+  --accent-foreground: #0f0518;
+  --border: #2e1065;
+  --input: #2e1065;
+  --ring: #d4a373;
+}
+
+@theme {
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+body {
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  /* Grid paper effect */
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+}
+
+@media print {
+
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Hide the main scrollbar */
+  html,
+  body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Show only the report view and its children */
+  #full-report-view,
+  #full-report-view * {
+    visibility: visible;
+  }
+
+  /* Position the report view to take over the page */
+  #full-report-view {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    z-index: 9999 !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* Custom Scrollbar (Luxurious) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
+  border: 2px solid var(--secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Remove Number Input Spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Glow Effects */
+@keyframes neon-pulse {
+  0% {
+    box-shadow: 0 0 5px var(--primary), 0 0 10px var(--primary);
+  }
+
+  50% {
+    box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+  }
+
+  100% {
+    box-shadow: 0 0 5px var(--primary), 0 0 10px var(--primary);
+  }
+}
+
+.glow-text {
+  text-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+  animation: text-flicker 3s infinite alternate;
+}
+
+.glow-box {
+  position: relative;
+}
+
+.glow-box::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, var(--primary), transparent, var(--accent));
+  z-index: -1;
+  filter: blur(10px);
+  opacity: 0.5;
+  border-radius: inherit;
+  transition: opacity 0.3s ease;
+}
+
+.glow-active:focus-within,
+.glow-active:hover {
+  box-shadow: 0 0 15px var(--primary);
+  border-color: var(--primary);
+}
+
+/* Luxurious Card Glow on Hover */
+.card-hover-glow {
+  transition: all 0.3s ease;
+}
+
+.card-hover-glow:hover {
+  box-shadow: 0 0 30px -5px var(--primary-foreground), 0 0 10px -2px var(--primary);
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+/* Specific Color Glows */
+.glow-emerald {
+  text-shadow: 0 0 10px #017300, 0 0 20px #00b01647;
+  animation: text-flicker 3s infinite alternate;
+}
+
+.glow-rose {
+  text-shadow: 0 0 5px rgba(244, 63, 94, 0.3), 0 0 10px rgba(244, 63, 94, 0.2);
+}
+
+.glow-amber {
+  text-shadow: 0 0 5px rgba(245, 158, 11, 0.3), 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.glow-primary {
+  box-shadow: 0 0 15px -3px var(--primary);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-primary:hover {
+  box-shadow: 0 0 25px -3px var(--primary), 0 0 10px -2px var(--accent);
+}
+
+.glow-tag {
+  box-shadow: 0 0 8px -2px currentColor;
 }
