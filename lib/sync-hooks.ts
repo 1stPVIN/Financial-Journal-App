@@ -114,35 +114,47 @@ export function useSyncedState<T extends { id: string | number }>(
 
             // Push to Cloud if logged in
             if (user) {
-                // Ideally we debounce this or only push changed rows
-                // For simplicity: We push the WHOLE state? No, that's dangerous/heavy.
-                // Better: We assume the CALLER knows what changed (add/update/delete)
-                // But this hook API mimics useState, so we don't know the delta.
+                // 1. Detect Deletions
+                const currentIds = new Set(current.map(i => String(i.id)));
+                const nextIds = new Set(nextState.map(i => String(i.id)));
 
-                // Hacky Solution for V1:
-                // Upsert everything?
-                // Or better: Rely on the 'Sync Button' for manual sync to save reads/writes?
-                // Real-time:
-                // Let's TRY to upsert the entire array for small datasets (categories).
-                // For Transactions, this is BAD.
+                const idsToDelete = current
+                    .filter(i => !nextIds.has(String(i.id)))
+                    .map(i => String(i.id));
 
-                // OPTIMIZATION:
-                // Only Sync when the USER explicitly triggers an action in the UI components?
-                // This hook creates a 'passive' sync on load.
-                // We will add an explicit 'push' logic elsewhere or here?
+                if (idsToDelete.length > 0) {
+                    // Execute Delete
+                    supabase.from(tableName)
+                        .delete()
+                        .in('id', idsToDelete)
+                        .then(({ error }) => {
+                            if (error) console.error(`Sync Delete Error (${tableName}):`, error);
+                        });
+                }
 
-                // Let's implement a "Background Upsert"
-                const rows = nextState.map(item => ({
-                    ...item,
-                    user_id: user.id,
-                    // Convert ID to string if needed (Supabase DB uses Text for ID per our schema)
-                    id: String(item.id)
-                }));
+                // 2. Upsert Updates/Additions
+                // We optimize by checks if possible, but upsert is safe.
+                // To save bandwidth, maybe only upsert items that changed? 
+                // For now, let's keep it simple and safe: Upsert ALL remaining items.
+                // Optimally: Filter items that are new or changed.
+                // But deep comparison is expensive.
 
-                // Fire and forget (don't await)
-                supabase.from(tableName).upsert(rows).then(({ error }) => {
-                    if (error) console.error(`Background Sync Error (${tableName}):`, error);
-                });
+                if (nextState.length > 0) {
+                    const rows = nextState.map(item => ({
+                        ...item,
+                        user_id: user.id,
+                        id: String(item.id)
+                    }));
+
+                    // Fire and forget catch
+                    supabase.from(tableName).upsert(rows).then(({ error }) => {
+                        if (error) console.error(`Background Sync Upsert Error (${tableName}):`, error);
+                    });
+                } else if (nextState.length === 0 && current.length > 0 && idsToDelete.length === 0) {
+                    // Edge case: Cleared all items but logic above handled deletions?
+                    // If nextState is empty, idsToDelete should contain ALL current IDs.
+                    // So the delete block above handles it.
+                }
             }
 
             return nextState;
