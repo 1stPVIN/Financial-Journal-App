@@ -41,6 +41,7 @@ export default function Home() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showConverter, setShowConverter] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false); // NEW AUTH DIALOG STATE
 
   // Lock Check Effect
   useEffect(() => {
@@ -458,17 +459,20 @@ export default function Home() {
                     {/* SYNC / AUTH STATUS */}
                     {user ? (
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowAuthDialog(true)}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-muted transition-colors border border-transparent hover:border-border"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                            {user.email?.[0].toUpperCase()}
+                          </div>
+                          <span className="text-sm font-medium hidden lg:inline-block max-w-[100px] truncate">{user.email}</span>
+                        </button>
+
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-medium">
                           {isSyncing ? <Loader2 size={12} className="animate-spin" /> : <Cloud size={12} />}
-                          <span>{isSyncing ? "Syncing..." : "Synced"}</span>
+                          <span className="hidden xl:inline">{isSyncing ? "Syncing..." : "Synced"}</span>
                         </div>
-                        <button
-                          onClick={signOut}
-                          className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-black/5"
-                          title="Sign Out"
-                        >
-                          <LogOut size={16} />
-                        </button>
                       </div>
                     ) : (
                       <Popover>
@@ -624,6 +628,13 @@ export default function Home() {
                     currency
                   }, getCategory);
                 }}
+                user={user}
+                onSignOut={() => {
+                  if (window.confirm(language === 'ar' ? "هل أنت متأكد من تسجيل الخروج؟" : "Are you sure you want to sign out?")) {
+                    signOut();
+                  }
+                }}
+                onLogin={() => setShowAuthDialog(true)}
               />
 
             </div>
@@ -927,6 +938,15 @@ export default function Home() {
                   </div>
                 </div>
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Auth Dialog */}
+        <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+          <DialogContent className="w-full max-w-md p-0 border-none bg-transparent shadow-none">
+            <div className="bg-background rounded-xl border border-border overflow-hidden p-1">
+              <AuthComponent onAuthSuccess={() => setShowAuthDialog(false)} />
             </div>
           </DialogContent>
         </Dialog>

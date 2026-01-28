@@ -115,10 +115,10 @@ export function RecurringExpensesManager({
                             setIsAddOpen(true);
                         }
                     }}
-                    className="gap-2 w-full"
-                    variant={isAddOpen ? "secondary" : "default"}
+                    className="gap-2 w-full h-9 text-sm"
+                    variant={isAddOpen ? "secondary" : "outline"}
                 >
-                    {isAddOpen ? <X size={16} /> : <Plus size={16} />}
+                    {isAddOpen ? <X size={14} /> : <Plus size={14} />}
                     {isAddOpen ? t('cancel') : t('addCommitment')}
                 </Button>
             </div>
@@ -208,7 +208,7 @@ export function RecurringExpensesManager({
                 )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 {expenses.map((expense) => {
                     const category = categories.find(c => c.id === expense.categoryId);
                     const Icon = category ? (iconMap[category.icon] || iconMap["Home"]) : iconMap["Home"];
@@ -258,16 +258,16 @@ export function RecurringExpensesManager({
                                     </div>
                                 </div>
 
-                                <div className="flex items-end justify-between mt-4">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground overflow-hidden">
                                         {category && (
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary/50">
-                                                <Icon size={12} style={{ color: category.color }} />
-                                                <span className="text-xs">{category.name}</span>
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <Icon size={14} style={{ color: category.color }} />
+                                                <span className="text-xs truncate">{category.name}</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="font-serif text-lg font-medium text-destructive">
+                                    <div className="font-serif text-base font-semibold text-destructive whitespace-nowrap ml-2 rtl:ml-0 rtl:mr-2">
                                         {formatCurrency(expense.amount, currency)}
                                     </div>
                                 </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { X, CalendarClock, Tag, Settings2, FileSpreadsheet, FileText, Banknote } from "lucide-react";
+import { X, CalendarClock, Tag, Settings2, FileSpreadsheet, FileText, Banknote, LogOut, Cloud, CloudOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLanguage } from "@/lib/language-context";
@@ -14,6 +14,9 @@ interface MobileMenuProps {
     onOpenConverter?: () => void;
     onExportExcel: () => void;
     onExportPDF: () => void;
+    user: any;
+    onSignOut: () => void;
+    onLogin: () => void;
 }
 
 export function MobileMenu({
@@ -24,7 +27,10 @@ export function MobileMenu({
     onOpenSettings,
     onOpenConverter,
     onExportExcel,
-    onExportPDF
+    onExportPDF,
+    user,
+    onSignOut,
+    onLogin
 }: MobileMenuProps) {
     const { t, language } = useLanguage();
 
@@ -61,6 +67,44 @@ export function MobileMenu({
                         </div>
 
                         <div className="space-y-6">
+                            {/* Auth Section */}
+                            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                                {user ? (
+                                    <div className="flex items-center justify-between">
+                                        <button
+                                            onClick={() => { onClose(); onLogin(); }}
+                                            className="flex items-center gap-3 flex-1 text-left rtl:text-right hover:bg-muted/50 p-2 -ml-2 rounded-md transition-colors"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                                <span className="font-bold text-lg">{user.email?.[0].toUpperCase()}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium truncate max-w-[150px]">{user.email}</span>
+                                                <span className="text-xs text-muted-foreground text-emerald-600 flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    Synced
+                                                </span>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => { onClose(); onSignOut(); }}
+                                            className="p-2 text-muted-foreground hover:text-destructive transition-colors bg-background rounded-full border shadow-sm"
+                                            title="Sign Out"
+                                        >
+                                            <LogOut size={18} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => { onClose(); onLogin(); }}
+                                        className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-md font-medium shadow-sm hover:opacity-90 transition-opacity"
+                                    >
+                                        <CloudOff size={18} />
+                                        {t('login') || "Login"}
+                                    </button>
+                                )}
+                            </div>
+
                             {/* Tools Section */}
                             <div>
                                 <div className="grid grid-cols-1 gap-3">
