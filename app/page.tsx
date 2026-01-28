@@ -430,7 +430,7 @@ export default function Home() {
                 <div>
                   <h1 className="text-2xl md:text-4xl font-serif text-primary mb-1">{t('financialJournal')}</h1>
                   {/* Date Navigation */}
-                  <div className="flex items-center gap-6 bg-card/50 backdrop-blur-sm px-6 py-2 rounded-full border border-border shadow-sm min-h-[42px]">
+                  <div className="flex items-center gap-4 bg-card/50 backdrop-blur-sm px-4 py-2 rounded-full border border-border shadow-sm min-h-[42px]">
                     {viewMode !== 'all' && (
                       <button
                         onClick={handlePrevDate}
@@ -439,7 +439,7 @@ export default function Home() {
                         <ChevronLeft size={20} className="rtl:rotate-180" />
                       </button>
                     )}
-                    <span className="text-lg font-medium font-serif min-w-[140px] text-center">
+                    <span className="text-lg font-medium font-serif min-w-[120px] text-center">
                       {headerDateLabel}
                     </span>
                     {viewMode !== 'all' && (
@@ -454,8 +454,8 @@ export default function Home() {
                 </div>
 
                 {/* Desktop Actions */}
-                <div className="hidden md:flex gap-2 items-center no-print">
-                  <div className="flex gap-2 mr-2 rtl:mr-0 rtl:ml-2">
+                <div className="hidden md:flex gap-1 items-center no-print">
+                  <div className="flex gap-1 mr-1 rtl:mr-0 rtl:ml-1">
                     {/* SYNC / AUTH STATUS */}
                     {user ? (
                       <div className="flex items-center gap-2">
@@ -528,16 +528,14 @@ export default function Home() {
                   />
 
                   {/* Widgets removed from header as requested, now inline */}
-
-                  <div className="w-[1px] h-6 bg-border mx-1"></div>
+                  {/* Divider removed as requested */}
 
                   <button
                     onClick={() => setShowCategoryManager(!showCategoryManager)}
-                    className="bg-secondary text-secondary-foreground px-3 py-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors shadow-sm"
+                    className="bg-secondary text-secondary-foreground p-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors shadow-sm"
                     title={t('categories')}
                   >
                     <Tag size={16} />
-                    <span className="flex items-center gap-1 hidden xl:inline">{t('categories')}</span>
                   </button>
 
                   {/* Fallback Buttons for Disabled Widgets */}
