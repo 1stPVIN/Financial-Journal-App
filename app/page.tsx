@@ -537,7 +537,7 @@ export default function Home() {
                     title={t('categories')}
                   >
                     <Tag size={16} />
-                    <span className="flex items-center gap-1">{t('categories')}</span>
+                    <span className="flex items-center gap-1 hidden xl:inline">{t('categories')}</span>
                   </button>
 
                   {/* Fallback Buttons for Disabled Widgets */}
@@ -565,10 +565,11 @@ export default function Home() {
                   {uiMode === "standard" ? (
                     <button
                       onClick={() => openForm()}
-                      className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all shadow-md glow-primary"
+                      className="bg-primary text-primary-foreground px-3 py-2 lg:px-4 lg:py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all shadow-md glow-primary"
+                      title={t('newEntry')}
                     >
                       <Plus size={16} />
-                      <span>{t('newEntry')}</span>
+                      <span className="hidden lg:inline">{t('newEntry')}</span>
                     </button>
                   ) : (
                     <div className="flex bg-muted p-1 rounded-full gap-1 shadow-inner">
