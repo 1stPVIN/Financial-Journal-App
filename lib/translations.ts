@@ -111,7 +111,8 @@ export const translations = {
 
         // Errors/Messages
         pdfGenerationFailed: "PDF Generation Failed",
-        couldNotGeneratePdf: "Could not generate PDF Report. Error:"
+        couldNotGeneratePdf: "Could not generate PDF Report. Error:",
+        login: "Login"
     },
     ar: {
         // General
@@ -223,6 +224,7 @@ export const translations = {
 
         // Errors/Messages
         pdfGenerationFailed: "فشل إنشاء PDF",
-        couldNotGeneratePdf: "تعذر إنشاء تقرير PDF. خطأ:"
+        couldNotGeneratePdf: "تعذر إنشاء تقرير PDF. خطأ:",
+        login: "تسجيل الدخول"
     }
 };
