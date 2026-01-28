@@ -461,12 +461,13 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setShowAuthDialog(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-muted transition-colors border border-transparent hover:border-border"
+                          className="flex items-center gap-2 px-2 py-1.5 md:px-3 rounded-full hover:bg-muted transition-colors border border-transparent hover:border-border"
+                          title={user.email || "Profile"}
                         >
-                          <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
                             {user.email?.[0].toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium hidden lg:inline-block max-w-[100px] truncate">{user.email}</span>
+                          <span className="text-sm font-medium hidden xl:inline-block max-w-[150px] truncate">{user.email}</span>
                         </button>
 
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-medium">
