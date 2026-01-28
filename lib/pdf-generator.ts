@@ -138,24 +138,32 @@ export const generatePDF = async (
     doc.setTextColor(33, 33, 33);
     doc.text("Transaction Details", 14, startY + cardHeight + 20);
 
+    // TABLE SECTION
+    doc.setFontSize(12);
+    doc.setTextColor(33, 33, 33);
+    doc.text("Transaction Details", 14, startY + cardHeight + 20);
+
     const tableData = transactions.map(t => {
         const cat = getCategory(t.categoryId);
-        const amountStr = formatCurrency(Math.abs(t.amount), currency);
+        const tCurrency = t.currency || currency;
+        const amountStr = formatCurrency(Math.abs(t.amount), tCurrency);
         const formattedAmount = t.type === 'income' ? `+ ${amountStr}` : `- ${amountStr}`;
 
         return [
-            new Date(t.date).toLocaleDateString(),
+            new Date(t.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
             processArabic(t.desc) || "-",
             processArabic(cat?.name || "Uncategorized") || "-",
             t.type.toUpperCase(),
-            formattedAmount
+            formattedAmount,
+            t.paymentLink ? "Link" : "-",
+            "" // Placeholder for Attachment
         ];
     });
 
     // Explicit Function Call Pattern (Robust)
     autoTable(doc, {
         startY: startY + cardHeight + 25,
-        head: [['Date', 'Description', 'Category', 'Type', 'Amount']],
+        head: [['Date', 'Description', 'Category', 'Type', 'Amount', 'Link', 'Att.']],
         body: tableData,
         theme: 'grid',
         headStyles: {
@@ -170,7 +178,8 @@ export const generatePDF = async (
             cellPadding: 3,
             font: fontLoaded ? 'Amiri' : 'helvetica',
             fontStyle: 'normal',
-            halign: 'center'
+            halign: 'center',
+            minCellHeight: 12 // Default compact height
         },
         alternateRowStyles: {
             fillColor: [248, 250, 252]
@@ -178,15 +187,68 @@ export const generatePDF = async (
         columnStyles: {
             1: { halign: 'right' },
             2: { halign: 'right' },
-            4: { halign: 'right', fontStyle: 'normal' }
+            4: { halign: 'right', fontStyle: 'normal' },
+            5: { halign: 'center', textColor: [37, 99, 235] }, // Link Color
+            6: { halign: 'center', cellWidth: 50 } // Width for attachment column
         },
         didParseCell: function (data) {
-            if (data.section === 'body' && data.column.index === 4) {
-                const type = (data.row.raw as string[])[3];
-                if (type === 'INCOME') {
-                    data.cell.styles.textColor = [5, 150, 105];
-                } else if (type === 'EXPENSE') {
-                    data.cell.styles.textColor = [220, 38, 38];
+            if (data.section === 'body') {
+                const t = transactions[data.row.index];
+                // Dynamic Row Height: Increase ONLY if attachment exists
+                if (t && t.attachment) {
+                    data.cell.styles.minCellHeight = 50;
+                }
+
+                if (data.column.index === 5 && t.paymentLink) {
+                    (data.cell as any).link = t.paymentLink;
+                }
+
+                if (data.column.index === 4) {
+                    const type = (data.row.raw as string[])[3];
+                    if (type === 'INCOME') {
+                        data.cell.styles.textColor = [5, 150, 105];
+                    } else if (type === 'EXPENSE') {
+                        data.cell.styles.textColor = [220, 38, 38];
+                    }
+                }
+            }
+        },
+        didDrawCell: function (data) {
+            if (data.section === 'body') {
+                const t = transactions[data.row.index];
+
+                // LINK COLUMN (Index 5)
+                if (data.column.index === 5 && t && t.paymentLink) {
+                    try {
+                        doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: t.paymentLink });
+                    } catch (e) {
+                        console.warn("Error adding link:", e);
+                    }
+                }
+
+                // ATTACHMENT COLUMN (Index 6)
+                if (data.column.index === 6 && t && t.attachment) {
+                    try {
+                        const imgProps = doc.getImageProperties(t.attachment);
+                        const ratio = imgProps.height / imgProps.width;
+                        const cellWidth = data.cell.width - 4; // Padding
+                        const cellHeight = data.cell.height - 4;
+
+                        let w = cellWidth;
+                        let h = w * ratio;
+
+                        if (h > cellHeight) {
+                            h = cellHeight;
+                            w = h / ratio;
+                        }
+
+                        const x = data.cell.x + (data.cell.width - w) / 2;
+                        const y = data.cell.y + (data.cell.height - h) / 2;
+
+                        doc.addImage(t.attachment, 'JPEG', x, y, w, h);
+                    } catch (e) {
+                        // Fail silently if image is invalid or format not supported
+                    }
                 }
             }
         }

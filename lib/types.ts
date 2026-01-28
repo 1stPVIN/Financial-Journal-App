@@ -17,6 +17,7 @@ export interface Transaction {
     type: TransactionType;
     paymentLink?: string;
     attachment?: string; // Base64 string for image/file
+    currency?: string; // Currency code (e.g., USD, SAR)
 }
 
 export interface RecurringExpense {

@@ -99,8 +99,8 @@ export function RecurringExpensesManager({
     const { t } = useLanguage();
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4">
+            <div className="flex flex-col gap-3">
                 <div>
                     <h2 className="text-xl font-serif text-primary">{t('monthlyCommitments')}</h2>
                     <p className="text-sm text-muted-foreground">{t('manageMonthlyBills')}</p>
@@ -115,7 +115,7 @@ export function RecurringExpensesManager({
                             setIsAddOpen(true);
                         }
                     }}
-                    className="gap-2"
+                    className="gap-2 w-full"
                     variant={isAddOpen ? "secondary" : "default"}
                 >
                     {isAddOpen ? <X size={16} /> : <Plus size={16} />}

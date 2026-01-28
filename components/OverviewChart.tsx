@@ -24,7 +24,7 @@ interface OverviewChartProps {
     currency: string;
     startingBalance?: number;
     getCategory?: (id: string) => Category | undefined;
-    viewMode: "monthly" | "yearly";
+    viewMode: "monthly" | "yearly" | "all";
 }
 
 const COLORS = ['#047857', '#be123c', '#d4a373', '#1d4ed8', '#7e22ce', '#c2410c'];
@@ -34,6 +34,30 @@ export function OverviewChart({ transactions, currency = "SAR", startingBalance 
 
     const data = useMemo(() => {
         if (!transactions) return [];
+
+        if (viewMode === 'all') {
+            // Aggregate by Year
+            const yearlyMap = new Map<number, { name: string, income: number, expense: number }>();
+
+            transactions.forEach(t => {
+                const d = new Date(t.date);
+                if (!isNaN(d.getTime())) {
+                    const year = d.getFullYear();
+                    if (!yearlyMap.has(year)) {
+                        yearlyMap.set(year, {
+                            name: year.toString(),
+                            income: 0,
+                            expense: 0
+                        });
+                    }
+                    const entry = yearlyMap.get(year)!;
+                    if (t.type === 'income') entry.income += t.amount;
+                    if (t.type === 'expense') entry.expense += t.amount;
+                }
+            });
+
+            return Array.from(yearlyMap.values()).sort((a, b) => parseInt(a.name) - parseInt(b.name));
+        }
 
         if (viewMode === 'yearly') {
             // Aggregate by Month (0-11)

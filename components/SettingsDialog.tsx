@@ -23,8 +23,13 @@ interface SettingsDialogProps {
     isDarkMode: boolean;
     onDarkModeChange: (isDark: boolean) => void;
     // View Mode
-    viewMode: "monthly" | "yearly";
-    onViewModeChange: (mode: "monthly" | "yearly") => void;
+    viewMode: "monthly" | "yearly" | "all";
+    onViewModeChange: (mode: "monthly" | "yearly" | "all") => void;
+    // Widget Toggles
+    showCommitmentsWidget: boolean;
+    onShowCommitmentsWidgetChange: (show: boolean) => void;
+    showConverterWidget: boolean;
+    onShowConverterWidgetChange: (show: boolean) => void;
     // Data Props for Backup/Restore
     transactions: any[];
     categories: any[];
@@ -48,17 +53,25 @@ export function SettingsDialog({
     onDarkModeChange,
     viewMode,
     onViewModeChange,
+    showCommitmentsWidget,
+    onShowCommitmentsWidgetChange,
+    showConverterWidget,
+    onShowConverterWidgetChange,
     transactions,
     categories,
     recurringExpenses,
 }: SettingsDialogProps) {
     const [hasBackup, setHasBackup] = useState(false);
+    const [hasPassword, setHasPassword] = useState(false);
+    const [showPasswordInput, setShowPasswordInput] = useState(false);
     const { language, setLanguage, t } = useLanguage();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const backup = localStorage.getItem("last_auto_backup");
             setHasBackup(!!backup);
+            const password = localStorage.getItem("auth_password_hash");
+            setHasPassword(!!password);
         }
     }, []);
 
@@ -171,10 +184,142 @@ export function SettingsDialog({
 
                     <div className="h-[1px] bg-border w-full"></div>
 
+                    {/* Security */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                            Security
+                        </label>
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium">App Lock</span>
+                                <span className="text-xs text-muted-foreground">Require password on starup</span>
+                            </div>
+
+                            {hasPassword ? (
+                                <button
+                                    onClick={() => {
+                                        if (confirm("Remove password protection?")) {
+                                            localStorage.removeItem("auth_password_hash");
+                                            setHasPassword(false);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white rounded-md text-xs font-medium transition-colors"
+                                >
+                                    Remove Lock
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowPasswordInput(true)}
+                                    className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground rounded-md text-xs font-medium transition-colors"
+                                >
+                                    Set Password
+                                </button>
+                            )}
+                        </div>
+
+                        <AnimatePresence>
+                            {showPasswordInput && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="bg-muted/30 p-3 rounded-lg border border-border space-y-2">
+                                        <input
+                                            type="password"
+                                            placeholder="Enter new password"
+                                            className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:border-ring"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const val = (e.target as HTMLInputElement).value;
+                                                    if (val) {
+                                                        localStorage.setItem("auth_password_hash", btoa(val));
+                                                        setHasPassword(true);
+                                                        setShowPasswordInput(false);
+                                                    }
+                                                }
+                                            }}
+                                            ref={(input) => {
+                                                if (input) input.focus();
+                                            }}
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => setShowPasswordInput(false)}
+                                                className="text-xs text-muted-foreground hover:text-foreground"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    // Find input sibling? React ref is cleaner.
+                                                    // For quick impl: select previous sibling input
+                                                    const input = (e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement);
+                                                    if (input && input.value) {
+                                                        localStorage.setItem("auth_password_hash", btoa(input.value));
+                                                        setHasPassword(true);
+                                                        setShowPasswordInput(false);
+                                                    }
+                                                }}
+                                                className="text-xs text-primary font-medium hover:underline"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="h-[1px] bg-border w-full"></div>
+
+                    {/* Dashboard Customization (Widgets) */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                            Dashboard Widgets
+                        </label>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                            <span className="text-sm font-medium">{t('monthlyCommitments')}</span>
+                            <button
+                                onClick={() => onShowCommitmentsWidgetChange(!showCommitmentsWidget)}
+                                className={cn(
+                                    "w-12 h-6 rounded-full transition-colors relative",
+                                    showCommitmentsWidget ? "bg-primary" : "bg-muted"
+                                )}
+                            >
+                                <span className={cn(
+                                    "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform rtl:right-1 rtl:left-auto",
+                                    showCommitmentsWidget ? "translate-x-6 rtl:-translate-x-6" : "translate-x-0"
+                                )} />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                            <span className="text-sm font-medium">{t('currencyConverter')}</span>
+                            <button
+                                onClick={() => onShowConverterWidgetChange(!showConverterWidget)}
+                                className={cn(
+                                    "w-12 h-6 rounded-full transition-colors relative",
+                                    showConverterWidget ? "bg-primary" : "bg-muted"
+                                )}
+                            >
+                                <span className={cn(
+                                    "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform rtl:right-1 rtl:left-auto",
+                                    showConverterWidget ? "translate-x-6 rtl:-translate-x-6" : "translate-x-0"
+                                )} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="h-[1px] bg-border w-full"></div>
+
                     {/* Currency Selection */}
                     <div className="space-y-3">
                         <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                            Currency
+                            Main Currency
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                             {CURRENCIES.map((curr) => (
@@ -297,6 +442,17 @@ export function SettingsDialog({
                             >
                                 {t('yearly')}
                             </button>
+                            <button
+                                onClick={() => onViewModeChange("all")}
+                                className={cn(
+                                    "flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all",
+                                    viewMode === "all"
+                                        ? "bg-background text-primary shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                All Time
+                            </button>
                         </div>
                     </div>
 
@@ -320,6 +476,9 @@ export function SettingsDialog({
                                             salary: localStorage.getItem("salary"),
                                             budget: localStorage.getItem("budget"),
                                             uiMode: localStorage.getItem("uiMode"),
+                                            viewMode: localStorage.getItem("viewMode"), // Include viewMode
+                                            showCommitmentsWidget: localStorage.getItem("showCommitmentsWidget"),
+                                            showConverterWidget: localStorage.getItem("showConverterWidget"),
                                         },
                                         timestamp: new Date().toISOString()
                                     };
@@ -362,6 +521,8 @@ export function SettingsDialog({
                                                             if (data.settings.budget) localStorage.setItem("budget", JSON.stringify(data.settings.budget));
                                                             if (data.settings.uiMode) localStorage.setItem("uiMode", JSON.stringify(data.settings.uiMode));
                                                             if (data.settings.viewMode) localStorage.setItem("viewMode", JSON.stringify(data.settings.viewMode));
+                                                            if (data.settings.showCommitmentsWidget) localStorage.setItem("showCommitmentsWidget", JSON.stringify(data.settings.showCommitmentsWidget));
+                                                            if (data.settings.showConverterWidget) localStorage.setItem("showConverterWidget", JSON.stringify(data.settings.showConverterWidget));
                                                         }
                                                         window.location.reload();
                                                     }

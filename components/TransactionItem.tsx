@@ -9,6 +9,8 @@ interface TransactionItemProps {
     transaction: Transaction;
     category?: Category;
     currency: string;
+    exchangeRate?: number;
+    showYear?: boolean;
     onEdit: () => void;
     onDelete?: () => void;
     onViewAttachment: () => void;
@@ -18,6 +20,8 @@ export function TransactionItem({
     transaction,
     category,
     currency,
+    exchangeRate,
+    showYear = false,
     onEdit,
     onDelete,
     onViewAttachment
@@ -30,7 +34,11 @@ export function TransactionItem({
     // Format Date
     const dateObj = new Date(transaction.date);
     const dateStr = !isNaN(dateObj.getTime())
-        ? dateObj.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'short' })
+        ? dateObj.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
+            day: 'numeric',
+            month: 'short',
+            year: showYear ? 'numeric' : undefined
+        })
         : transaction.date;
 
     return (
@@ -100,13 +108,20 @@ export function TransactionItem({
             {/* Amount & Actions */}
             <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
                 <span className={cn(
-                    "text-sm md:text-base font-bold font-mono whitespace-nowrap transition-all duration-300",
+                    "text-sm md:text-base font-bold font-mono whitespace-nowrap transition-all duration-300 flex flex-col items-end",
                     transaction.type === 'income' ? "text-emerald-600 dark:text-emerald-500 glow-emerald" :
                         transaction.type === 'expense' ? "text-rose-600 dark:text-rose-500 glow-rose" :
                             "text-amber-600 dark:text-amber-500 glow-amber"
                 )}>
-                    {transaction.type === 'income' ? "+" : "-"}{Number(transaction.amount).toLocaleString()}
-                    <span className="text-[10px] md:text-xs font-normal text-muted-foreground ml-1">{currency}</span>
+                    <span>
+                        {transaction.type === 'income' ? "+" : "-"}{Number(transaction.amount).toLocaleString()}
+                        <span className="text-[10px] md:text-xs font-normal text-muted-foreground ml-1">{transaction.currency || currency}</span>
+                    </span>
+                    {exchangeRate && transaction.currency !== currency && (
+                        <span className="text-[10px] text-muted-foreground font-normal opacity-80">
+                            ≈ {Number(transaction.amount / exchangeRate).toLocaleString()} {currency}
+                        </span>
+                    )}
                 </span>
 
                 <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">

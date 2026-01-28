@@ -2,15 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Check, ChevronDown, Paperclip, X, Image as ImageIcon, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { Plus, Check, ChevronDown, Paperclip, X, Image as ImageIcon, TrendingUp, TrendingDown, Wallet, Calendar, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Category, Transaction, TransactionType } from "@/lib/types";
-import { iconMap } from "@/lib/constants";
+import { iconMap, CURRENCIES } from "@/lib/constants";
 import { useLanguage } from "@/lib/language-context";
 
 interface TransactionFormProps {
     categories: Category[];
-    onAdd: (t: { type: TransactionType, amount: number, desc: string, categoryId: string, date: string, paymentLink?: string, attachment?: string }) => void;
+    onAdd: (t: { type: TransactionType, amount: number, desc: string, categoryId: string, date: string, paymentLink?: string, attachment?: string, currency?: string }) => void;
     defaultType?: TransactionType;
     initialData?: Transaction | null;
 }
@@ -22,8 +22,16 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
     const [paymentLink, setPaymentLink] = useState(initialData?.paymentLink || "");
     const [attachment, setAttachment] = useState(initialData?.attachment || "");
     const [selectedCatId, setSelectedCatId] = useState(initialData?.categoryId || "");
+
+    // New Fields
+    const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+    const [currency, setCurrency] = useState(initialData?.currency || "SAR");
+
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const currencyRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Filter categories by selected type
@@ -39,6 +47,11 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
             setPaymentLink("");
             setAttachment("");
             setSelectedCatId("");
+            setDate(new Date().toISOString().split('T')[0]);
+            // Keep previous currency or default
+            if (typeof window !== 'undefined') {
+                setCurrency(localStorage.getItem("lastUsedCurrency") || localStorage.getItem("currency") || "SAR");
+            }
             if (fileInputRef.current) fileInputRef.current.value = "";
         } else {
             setType(initialData.type);
@@ -47,6 +60,8 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
             setPaymentLink(initialData.paymentLink || "");
             setAttachment(initialData.attachment || "");
             setSelectedCatId(initialData.categoryId);
+            setDate(initialData.date);
+            setCurrency(initialData.currency || "SAR");
         }
     }, [initialData, defaultType]);
 
@@ -61,6 +76,9 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
+            }
+            if (currencyRef.current && !currencyRef.current.contains(event.target as Node)) {
+                setIsCurrencyOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -94,19 +112,25 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
             amount: parseFloat(amount),
             desc: description,
             categoryId: selectedCatId,
-            // Save as ISO String (YYYY-MM-DD) for correct filtering
-            date: initialData?.date || new Date().toISOString().split('T')[0],
+            date: date,
             paymentLink: paymentLink || undefined,
-            attachment: attachment || undefined
+            attachment: attachment || undefined,
+            currency: currency
         });
 
-        // Only clear if not editing, or maybe clear anyway? Usually clear.
+        // Save currency as last used
+        localStorage.setItem("lastUsedCurrency", currency);
+
+        // Only clear if not editing
         if (!initialData) {
             setAmount("");
             setDescription("");
             setPaymentLink("");
             setAttachment("");
             setSelectedCatId("");
+            // Keep date as today or maybe user wants to add multiple for same day? 
+            // Resetting to today seems safest.
+            setDate(new Date().toISOString().split('T')[0]);
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
@@ -191,26 +215,69 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                     </div>
 
                     <div className="space-y-4">
-                        <div>
-                            <Input
-                                placeholder={t('descriptionPlaceholder')}
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                required
-                            />
+                        {/* Date & Desc */}
+                        <div className="flex gap-4">
+                            <div className="w-1/3">
+                                <div className="relative">
+                                    <Input
+                                        type="date"
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                        className="pl-9 text-sm"
+                                    />
+                                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <Input
+                                    placeholder={t('descriptionPlaceholder')}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    required
+                                />
+                            </div>
                         </div>
 
+                        {/* Amount & Currency & Category */}
                         <div className="flex gap-4">
-                            <div className="flex-1">
+                            <div className="flex-1 flex gap-2">
                                 <Input
                                     type="number"
                                     placeholder={t('amount')}
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
                                     required
-                                    className="font-mono rtl:text-left"
+                                    className="font-mono rtl:text-left flex-1"
                                 />
+                                {/* Currency Selector */}
+                                <div className="relative w-24" ref={currencyRef}>
+                                    <div
+                                        onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
+                                        className="h-9 w-full flex items-center justify-between border rounded-md px-2 text-xs cursor-pointer bg-background hover:bg-accent"
+                                    >
+                                        <span>{currency}</span>
+                                        <ChevronDown size={12} className="opacity-50" />
+                                    </div>
+                                    {isCurrencyOpen && (
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded shadow-lg z-50 max-h-40 overflow-y-auto w-32">
+                                            {CURRENCIES.map(curr => (
+                                                <div
+                                                    key={curr.code}
+                                                    onClick={() => {
+                                                        setCurrency(curr.code);
+                                                        setIsCurrencyOpen(false);
+                                                    }}
+                                                    className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer text-xs"
+                                                >
+                                                    <span>{curr.code}</span>
+                                                    <span className="text-muted-foreground">{curr.symbol}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+
                             <div className="flex-1 relative" ref={dropdownRef}>
                                 <div
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
+import { SupabaseProvider } from "@/components/SupabaseProvider";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -29,7 +30,9 @@ export default function RootLayout({
         className={`${playfair.variable} ${inter.variable} antialiased transition-colors duration-300`}
       >
         <LanguageProvider>
-          {children}
+          <SupabaseProvider>
+            {children}
+          </SupabaseProvider>
         </LanguageProvider>
       </body>
     </html>

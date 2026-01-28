@@ -107,16 +107,16 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
     });
 
     // Data
-    transactions.forEach(t => {
+    transactions.forEach((t, index) => {
         const row = sheetLog.addRow([
-            t.date,
+            new Date(t.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
             t.desc,
             categoryLookup(t.categoryId),
             t.type.toUpperCase(),
             t.amount,
-            summary.currency,
+            t.currency || summary.currency,
             t.paymentLink || '',
-            t.attachment ? 'Has File' : ''
+            '' // Attachment acts as placeholder for image
         ]);
 
         // Conditional Styling for Type and Amount
@@ -133,7 +133,51 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
             amountCell.font = { color: { argb: 'FFBE123C' } };
         } else {
             typeCell.font = { color: { argb: 'FFB45309' } }; // Amber (Savings)
+            typeCell.font = { color: { argb: 'FFB45309' } }; // Amber (Savings)
             amountCell.font = { color: { argb: 'FFB45309' } };
+        }
+
+        // Hyperlink for Payment Link
+        if (t.paymentLink) {
+            const linkCell = row.getCell(7);
+            linkCell.value = { text: 'Link', hyperlink: t.paymentLink };
+            linkCell.font = { color: { argb: 'FF2563EB' }, underline: true }; // Blue
+        }
+
+        // Embed Image if exists
+        if (t.attachment) {
+            try {
+                // Determine extension (hacky basic check, optimally regex looking for data:image/fmt)
+                let ext: "png" | "jpeg" = "png";
+                if (t.attachment.startsWith("data:image/jpeg") || t.attachment.startsWith("data:image/jpg")) {
+                    ext = "jpeg";
+                }
+
+                // Add image to workbook
+                const imageId = workbook.addImage({
+                    base64: t.attachment,
+                    extension: ext,
+                });
+
+                // Add to sheet
+                // Note: 'tl' is 0-indexed column and row. 
+                // Row index in sheet depends on header. Header is row 6? No, sheetLog header is row 1?.
+                // sheetLog started fresh. Headers added at row 1.
+                // forEach index 0 -> Row 2
+                // So row index for image is index + 1
+                const imgRowIdx = index + 1;
+
+                sheetLog.addImage(imageId, {
+                    tl: { col: 7, row: imgRowIdx }, // col 7 is 'Attachment'
+                    ext: { width: 120, height: 120 }
+                });
+
+                // Increase row height to fit image
+                row.height = 130;
+            } catch (e) {
+                // Fallback text
+                row.getCell(8).value = "Has Image";
+            }
         }
     });
 
@@ -146,7 +190,7 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
         { width: 15 }, // Amount
         { width: 10 }, // Curr
         { width: 30 }, // Link
-        { width: 12 }  // Attach
+        { width: 35 }  // Attach (Wider for image space)
     ];
 
     // Write file

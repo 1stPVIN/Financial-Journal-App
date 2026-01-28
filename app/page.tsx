@@ -21,18 +21,41 @@ import { MobileMenu } from "@/components/MobileMenu";
 import { AnimatePresence, motion } from "framer-motion";
 import { CurrencyConverter } from "@/components/CurrencyConverter";
 import { Banknote } from "lucide-react";
+import { LockScreen } from "@/components/LockScreen";
+import { useExchangeRates } from "@/lib/hooks";
 
 import { useLanguage } from "@/lib/language-context";
+import { useSyncedState } from "@/lib/sync-hooks";
+import { useSupabase } from "@/components/SupabaseProvider";
+import { AuthComponent } from "@/components/AuthComponent";
+import { User, LogOut, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Need Popover for Auth Menu
 
 export default function Home() {
   const { t, language } = useLanguage();
+  const { user, signOut, isLoading: isAuthLoading } = useSupabase(); // Get User State
+  const [isAppLocked, setIsAppLocked] = useState(true);
+  const [isCheckingLock, setIsCheckingLock] = useState(true);
+
   const [showForm, setShowForm] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showConverter, setShowConverter] = useState(false);
 
+  // Lock Check Effect
+  useEffect(() => {
+    const hash = localStorage.getItem("auth_password_hash");
+    if (hash) {
+      setIsAppLocked(true);
+    } else {
+      setIsAppLocked(false);
+    }
+    setIsCheckingLock(false);
+  }, []);
+
   // Persistent State
   const [currency, setCurrency] = usePersistentState<string>("currency", "SAR");
+  const { rates } = useExchangeRates(currency);
   const [uiMode, setUiMode] = usePersistentState<"standard" | "simplified">("uiMode", "standard");
   const [salary, setSalary] = usePersistentState<number>("salary", 0);
   const [budget, setBudget] = usePersistentState<number>("budget", 0);
@@ -57,27 +80,45 @@ export default function Home() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
 
+
   const [showRecurringManager, setShowRecurringManager] = useState(false);
-  const [recurringExpenses, setRecurringExpenses] = usePersistentState<RecurringExpense[]>("recurringExpenses", [
-    { id: "r1", desc: "Apartment Rent", amount: 4000, categoryId: "c3", dueDateDay: 1, active: true },
-    { id: "r2", desc: "Netflix Subscription", amount: 45, categoryId: "c5", dueDateDay: 15, active: true },
-  ]);
 
-  const [categories, setCategories] = usePersistentState<Category[]>("categories", [
-    { id: "c1", name: "Salary", icon: "Wallet", color: "#047857", type: "income" },
-    { id: "c2", name: "Freelance", icon: "Briefcase", color: "#4d7c0f", type: "income" },
-    { id: "c3", name: "Housing", icon: "Home", color: "#be123c", type: "expense" },
-    { id: "c4", name: "Food", icon: "Utensils", color: "#c2410c", type: "expense" },
-    { id: "c5", name: "Lifestyle", icon: "Coffee", color: "#7e22ce", type: "expense" },
-    { id: "c6", name: "Emergency Fund", icon: "Safe", color: "#d4a373", type: "savings" },
-  ]);
+  // SYNCED STATE
+  const [recurringExpenses, setRecurringExpenses, isSyncingRecurring] = useSyncedState<RecurringExpense>(
+    "recurringExpenses",
+    "recurring_expenses",
+    [
+      { id: "r1", desc: "Apartment Rent", amount: 4000, categoryId: "c3", dueDateDay: 1, active: true },
+      { id: "r2", desc: "Netflix Subscription", amount: 45, categoryId: "c5", dueDateDay: 15, active: true },
+    ]
+  );
 
-  const [transactions, setTransactions] = usePersistentState<Transaction[]>("transactions", []);
+  const [categories, setCategories, isSyncingCategories] = useSyncedState<Category>(
+    "categories",
+    "categories",
+    [
+      { id: "c1", name: "Salary", icon: "Wallet", color: "#047857", type: "income" },
+      { id: "c2", name: "Freelance", icon: "Briefcase", color: "#4d7c0f", type: "income" },
+      { id: "c3", name: "Housing", icon: "Home", color: "#be123c", type: "expense" },
+      { id: "c4", name: "Food", icon: "Utensils", color: "#c2410c", type: "expense" },
+      { id: "c5", name: "Lifestyle", icon: "Coffee", color: "#7e22ce", type: "expense" },
+      { id: "c6", name: "Emergency Fund", icon: "Safe", color: "#d4a373", type: "savings" },
+    ]
+  );
 
-  // Search & Filter State
+  const [transactions, setTransactions, isSyncingTransactions] = useSyncedState<Transaction>(
+    "transactions",
+    "transactions",
+    []
+  );
+
+  const isSyncing = isSyncingCategories || isSyncingTransactions || isSyncingRecurring;
+
   // Search & Filter State
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date()); // Default to now, but we need to handle hydration if formatting differs
-  const [viewMode, setViewMode] = usePersistentState<"monthly" | "yearly">("viewMode", "monthly");
+  const [viewMode, setViewMode] = usePersistentState<"monthly" | "yearly" | "all">("viewMode", "monthly");
+  const [showCommitmentsWidget, setShowCommitmentsWidget] = usePersistentState<boolean>("showCommitmentsWidget", true);
+  const [showConverterWidget, setShowConverterWidget] = usePersistentState<boolean>("showConverterWidget", true);
 
   // Hydration fix: Ensure we only render date-dependent UI after mount if needed, 
   // OR just assume "new Date()" is close enough but formatting might differ. 
@@ -98,8 +139,11 @@ export default function Home() {
       const tDate = new Date(t.date);
 
       let isTimeMatch = false;
-      // Valid ISO Date Check (YYYY-MM-DD or similar parsable)
-      if (!isNaN(tDate.getTime()) && t.date.includes("-")) {
+
+      if (viewMode === 'all') {
+        isTimeMatch = true;
+      } else if (!isNaN(tDate.getTime()) && t.date.includes("-")) {
+        // Valid ISO Date Check (YYYY-MM-DD or similar parsable)
         if (viewMode === 'monthly') {
           isTimeMatch =
             tDate.getMonth() === currentDate.getMonth() &&
@@ -153,11 +197,12 @@ export default function Home() {
 
   // Format Header Date
   const headerDateLabel = useMemo(() => {
+    if (viewMode === 'all') return t('allTime');
     if (viewMode === 'monthly') {
       return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
     return currentDate.getFullYear().toString();
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, t]);
 
   const handleTransactionSubmit = (data: { type: TransactionType, amount: number, desc: string, categoryId: string, date: string, paymentLink?: string, attachment?: string }) => {
     if (editingTransaction) {
@@ -188,10 +233,21 @@ export default function Home() {
     }
   };
 
+  // Helper: Convert Base64 to Blob
+  const base64ToBlob = (base64: string, type: string = 'application/pdf') => {
+    const binStr = atob(base64.split(',')[1]);
+    const len = binStr.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      arr[i] = binStr.charCodeAt(i);
+    }
+    return new Blob([arr], { type: type });
+  };
+
   const handleDownload = (base64Data: string) => {
     const link = document.createElement("a");
     link.href = base64Data;
-    link.download = "receipt-attachment";
+    link.download = base64Data.startsWith("data:application/pdf") ? "document.pdf" : "attachment.png";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -261,17 +317,24 @@ export default function Home() {
 
   const totals = useMemo(() => {
     return filteredTransactions.reduce((acc, t) => {
-      if (t.type === 'income') acc.income += t.amount;
-      else if (t.type === 'expense') acc.expense += t.amount;
-      else if (t.type === 'savings') acc.savings += t.amount;
+      let amount = t.amount;
+      // Convert if needed
+      if (t.currency && t.currency !== currency && rates && rates[t.currency]) {
+        amount = t.amount / rates[t.currency];
+      }
+
+      if (t.type === 'income') acc.income += amount;
+      else if (t.type === 'expense') acc.expense += amount;
+      else if (t.type === 'savings') acc.savings += amount;
       return acc;
     }, { income: 0, expense: 0, savings: 0 });
-  }, [filteredTransactions]);
+  }, [filteredTransactions, currency, rates]);
 
   const netIncome = totals.income - totals.expense - totals.savings;
 
   // Calculate Initial Balance from previous periods for the trend line
   const monthlyStartingBalance = useMemo(() => {
+    if (viewMode === 'all') return 0;
     // Start of the current view period
     let startDate: Date;
     if (viewMode === 'monthly') {
@@ -309,13 +372,47 @@ export default function Home() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
-  if (!isMounted) return null; // Prevent hydration mismatch by not rendering until client-side
+  // Conditional Returns must be at the END of hooks
+  if (isCheckingLock || !isMounted) {
+    return <div className="min-h-screen bg-background" />; // Simple loading state
+  }
+
+  if (isAppLocked) {
+    return <LockScreen onUnlock={() => setIsAppLocked(false)} />;
+  }
 
   return (
     <div
       className="min-h-screen transition-colors duration-300 book-container"
     >
       <BookLayout>
+        {/* Desktop Sidebar Widgets */}
+        {(showCommitmentsWidget || showConverterWidget) && (
+          <div className="hidden xl:flex flex-col gap-6 fixed top-10 left-8 w-[340px] h-[calc(100vh-5rem)] overflow-y-auto z-10 p-2 scrollbar-none rtl:left-auto rtl:right-8 transition-all duration-500 ease-in-out">
+            {/* Currency Converter */}
+            {showConverterWidget && (
+              <div className="bg-card/95 backdrop-blur-md rounded-2xl border border-border/60 shadow-xl p-5 hover:shadow-2xl hover:border-primary/30 transition-all duration-300">
+                <CurrencyConverter />
+              </div>
+            )}
+
+            {/* Monthly Commitments */}
+            {showCommitmentsWidget && (
+              <div className="bg-card/95 backdrop-blur-md rounded-2xl border border-border/60 shadow-xl p-5 hover:shadow-2xl hover:border-primary/30 transition-all duration-300">
+                <RecurringExpensesManager
+                  expenses={recurringExpenses}
+                  categories={categories}
+                  onAdd={addRecurring}
+                  onUpdate={updateRecurring}
+                  onDelete={deleteRecurring}
+                  onProcess={processRecurring}
+                  currency={currency}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <div id="dashboard-snapshot" className="bg-background pt-4 px-1 rounded-xl">
           {/* Responsive Header */}
           <header className="mb-6 md:mb-8 border-b border-dashed border-primary/20 pb-4">
@@ -332,38 +429,63 @@ export default function Home() {
                 <div>
                   <h1 className="text-2xl md:text-4xl font-serif text-primary mb-1">{t('financialJournal')}</h1>
                   {/* Date Navigation */}
-                  <div className="flex items-center gap-6 bg-card/50 backdrop-blur-sm px-6 py-2 rounded-full border border-border shadow-sm">
-                    <button
-                      onClick={handlePrevDate}
-                      className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronLeft size={20} className="rtl:rotate-180" />
-                    </button>
+                  <div className="flex items-center gap-6 bg-card/50 backdrop-blur-sm px-6 py-2 rounded-full border border-border shadow-sm min-h-[42px]">
+                    {viewMode !== 'all' && (
+                      <button
+                        onClick={handlePrevDate}
+                        className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        <ChevronLeft size={20} className="rtl:rotate-180" />
+                      </button>
+                    )}
                     <span className="text-lg font-medium font-serif min-w-[140px] text-center">
                       {headerDateLabel}
                     </span>
-                    <button
-                      onClick={handleNextDate}
-                      className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronRight size={20} className="rtl:rotate-180" />
-                    </button>
+                    {viewMode !== 'all' && (
+                      <button
+                        onClick={handleNextDate}
+                        className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        <ChevronRight size={20} className="rtl:rotate-180" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Desktop Actions */}
                 <div className="hidden md:flex gap-2 items-center no-print">
                   <div className="flex gap-2 mr-2 rtl:mr-0 rtl:ml-2">
-                    {/* Placeholder for future if needed */}
+                    {/* SYNC / AUTH STATUS */}
+                    {user ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-medium">
+                          {isSyncing ? <Loader2 size={12} className="animate-spin" /> : <Cloud size={12} />}
+                          <span>{isSyncing ? "Syncing..." : "Synced"}</span>
+                        </div>
+                        <button
+                          onClick={signOut}
+                          className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-black/5"
+                          title="Sign Out"
+                        >
+                          <LogOut size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors">
+                            <CloudOff size={14} />
+                            <span>Login to Sync</span>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="end">
+                          <AuthComponent onAuthSuccess={() => { }} />
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   </div>
 
-                  <button
-                    onClick={toggleRecurringManager}
-                    className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-black/5"
-                    title={t('monthlyCommitments')}
-                  >
-                    <CalendarClock size={20} />
-                  </button>
+                  {/* Widgets removed from header as requested, now inline */}
 
                   <button
                     onClick={() => setShowSettings(true)}
@@ -400,13 +522,7 @@ export default function Home() {
                     }}
                   />
 
-                  <button
-                    onClick={() => setShowConverter(true)}
-                    className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-black/5"
-                    title={t('currencyConverter')}
-                  >
-                    <Banknote size={20} />
-                  </button>
+                  {/* Widgets removed from header as requested, now inline */}
 
                   <div className="w-[1px] h-6 bg-border mx-1"></div>
 
@@ -418,6 +534,27 @@ export default function Home() {
                     <Tag size={16} />
                     <span className="flex items-center gap-1">{t('categories')}</span>
                   </button>
+
+                  {/* Fallback Buttons for Disabled Widgets */}
+                  {!showCommitmentsWidget && (
+                    <button
+                      onClick={() => setShowRecurringManager(true)}
+                      className="bg-secondary text-secondary-foreground p-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors shadow-sm"
+                      title={t('monthlyCommitments')}
+                    >
+                      <CalendarClock size={16} />
+                    </button>
+                  )}
+
+                  {!showConverterWidget && (
+                    <button
+                      onClick={() => setShowConverter(true)}
+                      className="bg-secondary text-secondary-foreground p-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors shadow-sm"
+                      title="Currency Converter"
+                    >
+                      <Banknote size={16} />
+                    </button>
+                  )}
 
 
                   {uiMode === "standard" ? (
@@ -510,6 +647,10 @@ export default function Home() {
                 onDarkModeChange={setIsDarkMode}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
+                showCommitmentsWidget={showCommitmentsWidget}
+                onShowCommitmentsWidgetChange={setShowCommitmentsWidget}
+                showConverterWidget={showConverterWidget}
+                onShowConverterWidgetChange={setShowConverterWidget}
                 transactions={transactions}
                 categories={categories}
                 recurringExpenses={recurringExpenses}
@@ -527,8 +668,35 @@ export default function Home() {
             )}
           </AnimatePresence>
 
+
+          {/* Dashboard Widgets Section (Inline) */}
+          {/* Dashboard Widgets Section (Inline - Mobile/Laptop) */}
+          {(showCommitmentsWidget || showConverterWidget) && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 xl:hidden">
+              {showCommitmentsWidget && (
+                <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <RecurringExpensesManager
+                    expenses={recurringExpenses}
+                    categories={categories}
+                    onAdd={addRecurring}
+                    onUpdate={updateRecurring}
+                    onDelete={deleteRecurring}
+                    onProcess={processRecurring}
+                    currency={currency}
+                  />
+                </div>
+              )}
+              {showConverterWidget && (
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm h-fit">
+                  <CurrencyConverter />
+                </div>
+              )}
+            </div>
+          )}
+
           <Dialog open={showRecurringManager} onOpenChange={setShowRecurringManager}>
             <DialogContent className="max-w-4xl w-[95%] max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+              {/* Kept for backward compat or if opened via other means, though largely redundant if inline */}
               <div className="bg-background rounded-xl shadow-2xl border border-border p-6">
                 <RecurringExpensesManager
                   expenses={recurringExpenses}
@@ -543,9 +711,16 @@ export default function Home() {
             </DialogContent>
           </Dialog>
 
+          <Dialog open={showConverter} onOpenChange={setShowConverter}>
+            <DialogContent className="sm:max-w-[400px] p-6 border-none bg-background shadow-2xl rounded-2xl">
+              <CurrencyConverter />
+            </DialogContent>
+          </Dialog>
+
+
           <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
-            <DialogContent className="max-w-xl w-[95%] max-h-[85vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
-              <div className="bg-background rounded-xl shadow-2xl border border-border p-1">
+            <DialogContent className="max-w-4xl w-[95%] max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+              <div className="bg-background rounded-xl shadow-2xl border border-border p-6">
                 <CategoryManager
                   categories={categories}
                   onAdd={addCategory}
@@ -555,13 +730,6 @@ export default function Home() {
               </div>
             </DialogContent>
           </Dialog>
-
-          <Dialog open={showConverter} onOpenChange={setShowConverter}>
-            <DialogContent className="sm:max-w-[400px] p-6 border-none bg-background shadow-2xl rounded-2xl">
-              <CurrencyConverter />
-            </DialogContent>
-          </Dialog>
-
 
           <Dialog open={showForm} onOpenChange={(open) => {
             if (!open) {
@@ -582,7 +750,7 @@ export default function Home() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 mt-5">
             <div className="bg-card p-6 rounded-xl border border-border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow card-hover-glow relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Wallet size={48} className={netIncome >= 0 ? "text-emerald-500" : "text-rose-500"} />
               </div>
               <div>
@@ -706,6 +874,8 @@ export default function Home() {
                     onEdit={() => handleEditClick(t)}
                     onDelete={() => setTransactions(prev => prev.filter(tr => tr.id !== t.id))}
                     onViewAttachment={() => setViewingAttachment(t.attachment || null)}
+                    exchangeRate={rates && t.currency && t.currency !== currency ? rates[t.currency] : undefined}
+                    showYear={viewMode === 'all'}
                   />
                 ))
               )}
@@ -714,19 +884,32 @@ export default function Home() {
         </div >
 
         <Dialog open={!!viewingAttachment} onOpenChange={(open) => !open && setViewingAttachment(null)}>
-          <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-transparent border-none shadow-none">
+          <DialogContent className="sm:max-w-4xl w-full p-0 overflow-hidden bg-transparent border-none shadow-none">
             <div className="relative bg-background p-4 rounded-lg shadow-xl border border-border">
               <button
                 onClick={() => setViewingAttachment(null)}
-                className="absolute right-4 top-4 p-1 rounded-full bg-black/10 hover:bg-black/20 text-foreground z-10"
+                className="absolute right-4 top-4 p-1 rounded-full bg-black/10 hover:bg-black/20 text-foreground z-20"
               >
                 <X size={16} />
               </button>
 
               {viewingAttachment && (
                 <div className="flex flex-col gap-4">
-                  <div className="rounded-lg overflow-hidden border border-border bg-card text-center">
-                    <img src={viewingAttachment} alt="Attachment" className="max-h-[60vh] w-full object-contain mx-auto" />
+                  <div className="rounded-lg overflow-hidden border border-border bg-card text-center min-h-[400px] flex items-center justify-center relative">
+                    {viewingAttachment.startsWith("data:application/pdf") ? (
+                      <iframe
+                        src={URL.createObjectURL(base64ToBlob(viewingAttachment))}
+                        className="w-full h-[75vh]"
+                        title="PDF Viewer"
+                      />
+                    ) : (viewingAttachment.startsWith("data:image")) ? (
+                      <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 p-8 text-muted-foreground">
+                        <Paperclip size={48} />
+                        <p>{t('attachFile')}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-center gap-4">
                     <button
@@ -752,7 +935,7 @@ export default function Home() {
       {/* Mobile Expanding FAB */}
       {
         !(showSettings || showCategoryManager || showRecurringManager || showForm || viewingAttachment) && (
-          <div className="md:hidden fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-40 flex flex-col items-end rtl:items-start gap-2">
+          <div className="md:hidden fixed bottom-6 right-6 z-40 flex flex-col items-end rtl:items-start gap-2">
             {/* Options (appear when expanded) with AnimatePresence for smooth exit */}
             <AnimatePresence>
               {showQuickAdd && (

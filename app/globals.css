@@ -275,7 +275,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
 }
 
 @media print {
@@ -419,4 +419,14 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .glow-tag {
   box-shadow: 0 0 8px -2px currentColor;
+}
+
+/* Hide Scrollbar Utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
