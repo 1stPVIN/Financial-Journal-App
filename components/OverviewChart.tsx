@@ -24,7 +24,6 @@ interface OverviewChartProps {
     currency: string;
     startingBalance?: number;
     getCategory?: (id: string) => Category | undefined;
-    getCategory?: (id: string) => Category | undefined;
     viewMode: "monthly" | "yearly" | "all";
     rates?: Record<string, number> | null;
 }
