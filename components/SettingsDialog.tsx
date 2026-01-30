@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, RotateCcw } from "lucide-react";
 import { CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -594,7 +594,7 @@ export function SettingsDialog({
                                         : "border-border text-muted-foreground opacity-50 cursor-not-allowed bg-muted/50"
                                 )}
                             >
-                                ♻️ {t('restoreData')} (Undo Reset)
+                                <RotateCcw size={16} /> {t('restoreData')} (Undo Reset)
                             </button>
                         </div>
 
