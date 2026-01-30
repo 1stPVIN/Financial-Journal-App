@@ -138,12 +138,60 @@ export const generatePDF = async (
     doc.setTextColor(33, 33, 33);
     doc.text("Transaction Details", 14, startY + cardHeight + 20);
 
-    // TABLE SECTION
-    doc.setFontSize(12);
-    doc.setTextColor(33, 33, 33);
-    doc.text("Transaction Details", 14, startY + cardHeight + 20);
+    // Pre-process transactions to fetch remote images (for Telegram/API blobs)
+    const processedTransactions = await Promise.all(transactions.map(async (t) => {
+        const originalUrl = t.attachment; // Keep original URL for linking
+        let attachment = undefined; // Reset attachment (will be base64 if image)
+        let resolvedFilename: string | undefined = undefined;
+        let mimeType: string | undefined = undefined;
 
-    const tableData = transactions.map(t => {
+        // If it's a URL (from API) and is an image, fetch it.
+        if (originalUrl && !originalUrl.startsWith('data:') && (originalUrl.startsWith('/api/file/') || originalUrl.startsWith('http'))) {
+            try {
+                const res = await fetch(originalUrl);
+
+                // Get Metadata from headers
+                mimeType = res.headers.get('content-type') || undefined;
+                const disposition = res.headers.get('content-disposition');
+                if (disposition && disposition.includes('filename=')) {
+                    // Extract filename from header
+                    const match = disposition.match(/filename="?([^"]+)"?/);
+                    if (match && match[1]) resolvedFilename = match[1];
+                }
+
+                const blob = await res.blob();
+                if (blob.type.startsWith('image/')) {
+                    attachment = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed to fetch image for PDF:", e);
+            }
+        } else if (originalUrl && originalUrl.startsWith('data:image')) {
+            attachment = originalUrl;
+            mimeType = 'image/png'; // Default
+        }
+
+        // Fallback filename logic
+        if (!resolvedFilename && originalUrl) {
+            const cleanUrl = originalUrl.split('?')[0];
+            const baseName = decodeURIComponent(cleanUrl.split('/').pop() || 'file');
+            if (baseName.length > 20 && !baseName.includes('.')) {
+                const ext = mimeType?.split('/')[1] || 'file';
+                resolvedFilename = `Attachment.${ext}`;
+            } else {
+                resolvedFilename = baseName;
+            }
+        }
+
+        // Return as any 
+        return { ...t, attachment, originalUrl, resolvedFilename, mimeType } as any;
+    }));
+
+    const tableData = processedTransactions.map(t => {
         const cat = getCategory(t.categoryId);
         const tCurrency = t.currency || currency;
         const amountStr = formatCurrency(Math.abs(t.amount), tCurrency);
@@ -189,14 +237,18 @@ export const generatePDF = async (
             2: { halign: 'right' },
             4: { halign: 'right', fontStyle: 'normal' },
             5: { halign: 'center', textColor: [37, 99, 235] }, // Link Color
-            6: { halign: 'center', cellWidth: 50 } // Width for attachment column
+            6: { halign: 'center', cellWidth: 50 }, // Width for attachment column
         },
         didParseCell: function (data) {
             if (data.section === 'body') {
-                const t = transactions[data.row.index];
-                // Dynamic Row Height: Increase ONLY if attachment exists
-                if (t && t.attachment) {
+                const t = processedTransactions[data.row.index];
+                // Dynamic Row Height: 
+                // Don't expand too much for small icon, but expand for large image
+                if (t && t.attachment && t.attachment.startsWith('data:image')) {
                     data.cell.styles.minCellHeight = 50;
+                } else if (t && t.originalUrl) {
+                    // Ensure enough height for Icon + Text (Icon 10 + space + text ~ 20)
+                    data.cell.styles.minCellHeight = 25;
                 }
 
                 if (data.column.index === 5 && t.paymentLink) {
@@ -215,7 +267,7 @@ export const generatePDF = async (
         },
         didDrawCell: function (data) {
             if (data.section === 'body') {
-                const t = transactions[data.row.index];
+                const t = processedTransactions[data.row.index];
 
                 // LINK COLUMN (Index 5)
                 if (data.column.index === 5 && t && t.paymentLink) {
@@ -227,27 +279,73 @@ export const generatePDF = async (
                 }
 
                 // ATTACHMENT COLUMN (Index 6)
-                if (data.column.index === 6 && t && t.attachment) {
-                    try {
-                        const imgProps = doc.getImageProperties(t.attachment);
-                        const ratio = imgProps.height / imgProps.width;
-                        const cellWidth = data.cell.width - 4; // Padding
-                        const cellHeight = data.cell.height - 4;
-
-                        let w = cellWidth;
-                        let h = w * ratio;
-
-                        if (h > cellHeight) {
-                            h = cellHeight;
-                            w = h / ratio;
+                if (data.column.index === 6) {
+                    // 1. Add Hyperlink if URL exists (Image or PDF)
+                    if (t && t.originalUrl) {
+                        try {
+                            const fullUrl = t.originalUrl.startsWith('http')
+                                ? t.originalUrl
+                                : `${window.location.origin}${t.originalUrl}`;
+                            doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: fullUrl });
+                        } catch (e) {
+                            console.warn("Error adding attachment link:", e);
                         }
+                    }
 
-                        const x = data.cell.x + (data.cell.width - w) / 2;
-                        const y = data.cell.y + (data.cell.height - h) / 2;
+                    // 2. Draw Image if available
+                    if (t && t.attachment && t.attachment.startsWith('data:image')) {
+                        try {
+                            const imgProps = doc.getImageProperties(t.attachment);
+                            const ratio = imgProps.height / imgProps.width;
+                            const cellWidth = data.cell.width - 4; // Padding
+                            const cellHeight = data.cell.height - 4;
 
-                        doc.addImage(t.attachment, 'JPEG', x, y, w, h);
-                    } catch (e) {
-                        // Fail silently if image is invalid or format not supported
+                            let w = cellWidth;
+                            let h = w * ratio;
+
+                            if (h > cellHeight) {
+                                h = cellHeight;
+                                w = h / ratio;
+                            }
+
+                            const x = data.cell.x + (data.cell.width - w) / 2;
+                            const y = data.cell.y + (data.cell.height - h) / 2;
+
+                            doc.addImage(t.attachment, 'JPEG', x, y, w, h);
+                        } catch (e) {
+                            console.warn("Error adding image to PDF:", e);
+                        }
+                    }
+                    // 3. Fallback: Draw Pro Icon + Filename
+                    else if (t && t.originalUrl && !t.attachment) {
+                        const cleanUrl = t.originalUrl.split('?')[0];
+                        let filename = t.resolvedFilename || decodeURIComponent(cleanUrl.split('/').pop() || 'File');
+                        let ext = '';
+                        if (t.mimeType && t.mimeType.includes('pdf')) ext = 'pdf';
+                        if (!ext && filename.includes('.')) ext = filename.split('.').pop()?.toLowerCase() || '';
+
+                        // Truncate filename nicely
+                        if (filename.length > 25) filename = filename.substring(0, 22) + "...";
+
+                        // Icon Dimensions (Standard Document Size)
+                        const iconW = 10;
+                        const iconH = 12;
+                        const centerX = data.cell.x + data.cell.width / 2;
+                        const iconX = centerX - iconW / 2;
+                        // Center vertically
+                        const totalH = iconH + 5; // Icon + Gap + Text
+                        const startY = data.cell.y + (data.cell.height - totalH) / 2;
+
+                        drawProFileIcon(doc, iconX, startY, iconW, iconH, ext);
+
+                        // Filename Text
+                        doc.setFontSize(7);
+                        doc.setFont("helvetica", "normal");
+                        doc.setTextColor(51, 65, 85); // Slate-700
+                        doc.text(filename, centerX, startY + iconH + 4, { align: 'center' });
+
+                        // Restore font
+                        doc.setFont("Amiri", "normal");
                     }
                 }
             }
@@ -256,6 +354,54 @@ export const generatePDF = async (
 
     doc.save(`financial_report_${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+// Flaticon-style Vector Icon
+function drawProFileIcon(doc: jsPDF, x: number, y: number, w: number, h: number, type: string) {
+    const isPdf = type === 'pdf';
+
+    // 1. Paper Sheet (White with subtle border)
+    doc.setFillColor(255, 255, 255); // White body
+    doc.setDrawColor(203, 213, 225); // Slate-300 border
+    doc.setLineWidth(0.1);
+    doc.roundedRect(x, y, w, h, 1, 1, 'FD'); // Fill and Draw
+
+    // 2. Folded Corner (Top-Right)
+    const foldSize = w * 0.3;
+    doc.setFillColor(241, 245, 249); // Slate-100 (Slightly darker white)
+    doc.setDrawColor(203, 213, 225); // Slate-300
+    // Draw triangle for fold
+    // (x+w-fold, y) -> (x+w, y+fold) -> (x+w-fold, y+fold)
+    doc.triangle(
+        x + w - foldSize, y,
+        x + w, y + foldSize,
+        x + w - foldSize, y + foldSize,
+        'FD'
+    );
+    // Erase the border created by main rect at the corner (visual trick: redraw white lines? Hard in jspdf. 
+    // Easier: Draw fold *over* the main rect. Done.
+
+    // 3. Colored Badge/Label (Bottom-Center or Center)
+    const badgeH = h * 0.35;
+    const badgeW = w * 0.8;
+    const badgeX = x + (w - badgeW) / 2;
+    const badgeY = y + h - badgeH - (h * 0.15); // Positioned at bottom area
+
+    // Color choice matches typical file icons
+    const badgeColor = isPdf ? [239, 68, 68] : [59, 130, 246]; // Red-500 (PDF) or Blue-500 (Generic)
+
+    doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+    doc.setDrawColor(badgeColor[0], badgeColor[1], badgeColor[2]); // Same border
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 0.5, 0.5, 'FD');
+
+    // 4. Text inside Badge
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(4);
+    doc.setFont('helvetica', 'bold');
+    doc.text(isPdf ? 'PDF' : type.toUpperCase(), x + w / 2, badgeY + badgeH / 2 + 0.5, { align: 'center', baseline: 'middle' });
+
+    // Restore
+    doc.setFont('Amiri', 'normal');
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
     let binary = '';

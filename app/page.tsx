@@ -228,8 +228,8 @@ export default function Home() {
     try {
       const res = await fetch(base64Data);
       const blob = await res.blob();
-      const extension = base64Data.startsWith("data:application/pdf") ? ".pdf" : ".png";
-      const mimeType = base64Data.startsWith("data:application/pdf") ? "application/pdf" : "image/png";
+      const mimeType = blob.type;
+      const extension = mimeType === "application/pdf" ? ".pdf" : ".png";
       const file = new File([blob], `attachment${extension}`, { type: mimeType });
 
       // Check if Web Share API is available and can share files
@@ -263,6 +263,7 @@ export default function Home() {
 
   // Helper: Convert Base64 to Blob
   const base64ToBlob = (base64: string, type: string = 'application/pdf') => {
+    if (!base64.startsWith('data:')) return new Blob([], { type });
     const binStr = atob(base64.split(',')[1]);
     const len = binStr.length;
     const arr = new Uint8Array(len);
@@ -272,13 +273,32 @@ export default function Home() {
     return new Blob([arr], { type: type });
   };
 
-  const handleDownload = (base64Data: string) => {
-    const link = document.createElement("a");
-    link.href = base64Data;
-    link.download = base64Data.startsWith("data:application/pdf") ? "document.pdf" : "attachment.png";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (attachment: string) => {
+    try {
+      if (attachment.startsWith('data:')) {
+        const link = document.createElement("a");
+        link.href = attachment;
+        link.download = attachment.startsWith("data:application/pdf") ? "document.pdf" : "attachment.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // It is a URL (Telegram)
+        const res = await fetch(attachment);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = blob.type === 'application/pdf' ? "document.pdf" : "attachment.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error("Download failed", e);
+      window.open(attachment, '_blank');
+    }
   };
 
   // Recurring Logic
@@ -940,19 +960,24 @@ export default function Home() {
               {viewingAttachment && (
                 <div className="flex flex-col gap-4">
                   <div className="rounded-lg overflow-hidden border border-border bg-card text-center min-h-[400px] flex items-center justify-center relative">
-                    {viewingAttachment.startsWith("data:application/pdf") ? (
-                      <iframe
-                        src={URL.createObjectURL(base64ToBlob(viewingAttachment))}
-                        className="w-full h-[75vh]"
-                        title="PDF Viewer"
-                      />
-                    ) : (viewingAttachment.startsWith("data:image")) ? (
-                      <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
+                    {/* Handle PDF (Base64 or URL) */}
+                    {(viewingAttachment.startsWith("data:application/pdf") || viewingAttachment.toLowerCase().includes(".pdf") || viewingAttachment.includes("/api/file/")) ? (
+                      // We can't easily detect PDF from a URL without headers, but for now assuming if not image it's PDF or we treat as generic
+                      // Actually, for API URLs, we can use <object> or <iframe>. 
+                      // Let's rely on error handling or assume images unless known PDF
+                      // Better: check if startswith data:application/pdf OR (it is a url and we can try to load it).
+                      // Simplest check: if it is NOT data:image, treat as PDF/Document for viewer.
+                      !viewingAttachment.startsWith("data:image") ? (
+                        <iframe
+                          src={viewingAttachment.startsWith("data:") ? URL.createObjectURL(base64ToBlob(viewingAttachment)) : viewingAttachment}
+                          className="w-full h-[75vh]"
+                          title="Document Viewer"
+                        />
+                      ) : (
+                        <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
+                      )
                     ) : (
-                      <div className="flex flex-col items-center gap-2 p-8 text-muted-foreground">
-                        <Paperclip size={48} />
-                        <p>{t('attachFile')}</p>
-                      </div>
+                      <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
                     )}
                   </div>
                   <div className="flex justify-center gap-4">

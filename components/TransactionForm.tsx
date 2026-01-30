@@ -8,6 +8,7 @@ import { Category, Transaction, TransactionType } from "@/lib/types";
 import { iconMap, CURRENCIES } from "@/lib/constants";
 import { useLanguage } from "@/lib/language-context";
 import { DatePicker } from "@/components/DatePicker";
+import { uploadFile } from "@/lib/storage";
 
 interface TransactionFormProps {
     categories: Category[];
@@ -31,6 +32,7 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const currencyRef = useRef<HTMLDivElement>(null);
@@ -89,16 +91,23 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
     }, []);
 
     // Process file (used by file input, drag-drop, and paste)
-    const processFile = (file: File) => {
+    const processFile = async (file: File) => {
         const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf'];
         if (!validTypes.includes(file.type)) {
-            return; // Ignore unsupported files
+            alert(language === 'ar' ? 'نوع الملف غير مدعوم' : 'Unsupported file type');
+            return;
         }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setAttachment(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+
+        try {
+            setIsUploading(true);
+            const url = await uploadFile(file);
+            setAttachment(url);
+        } catch (error) {
+            console.error("Upload failed:", error);
+            alert(language === 'ar' ? 'فشل رفع الملف' : 'File upload failed');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -445,9 +454,9 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                     <Upload size={20} className={cn(isDragging && "text-primary animate-bounce")} />
                                     <p className="text-xs">
-                                        {language === 'ar'
-                                            ? 'اسحب وأفلت أو Ctrl+V للصق'
-                                            : 'Drag & drop or Ctrl+V to paste'
+                                        {isUploading
+                                            ? (language === 'ar' ? 'جاري الرفع...' : 'Uploading...')
+                                            : (language === 'ar' ? 'اسحب وأفلت أو Ctrl+V للصق' : 'Drag & drop or Ctrl+V to paste')
                                         }
                                     </p>
                                 </div>
@@ -456,7 +465,7 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                     </div>
 
                     <div className="pt-4 flex justify-end">
-                        <Button type="submit" className="w-full sm:w-auto bg-primary text-primary-foreground" disabled={!amount || !description || !selectedCatId}>
+                        <Button type="submit" className="w-full sm:w-auto bg-primary text-primary-foreground" disabled={!amount || !description || !selectedCatId || isUploading}>
                             <Check className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
                             {t('recordEntry')}
                         </Button>

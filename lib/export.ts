@@ -14,7 +14,74 @@ interface ExportData {
     categoryLookup: (id: string) => string;
 }
 
+const fetchImageAsBase64 = async (url: string): Promise<string | null> => {
+    try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn("Failed to fetch image for Excel:", e);
+        return null;
+    }
+};
+
 export async function exportToExcel({ transactions, summary, categoryLookup }: ExportData) {
+    // Pre-process transactions to fetch remote images
+    const processedTransactions = await Promise.all(transactions.map(async (t) => {
+        const originalUrl = t.attachment; // Keep original URL for linking
+        let attachment = undefined; // Reset attachment (will be base64 if image)
+        let resolvedFilename: string | undefined = undefined;
+
+        if (originalUrl && !originalUrl.startsWith('data:') && (originalUrl.startsWith('/api/file/') || originalUrl.startsWith('http'))) {
+            try {
+                const res = await fetch(originalUrl);
+
+                // Get Metadata from headers to determine nice filename
+                const disposition = res.headers.get('content-disposition');
+                const contentType = res.headers.get('content-type');
+                if (disposition && disposition.includes('filename=')) {
+                    // Extract filename from header
+                    const match = disposition.match(/filename="?([^"]+)"?/);
+                    if (match && match[1]) resolvedFilename = match[1];
+                }
+
+                if (!resolvedFilename) {
+                    // Fallback
+                    const cleanUrl = originalUrl.split('?')[0];
+                    const baseName = decodeURIComponent(cleanUrl.split('/').pop() || 'file');
+                    // If ID is ugly (long alphanumeric), use generic
+                    if (baseName.length > 20 && !baseName.includes('.')) {
+                        const ext = contentType?.split('/')[1] || 'file';
+                        resolvedFilename = `Attachment.${ext}`;
+                    } else {
+                        resolvedFilename = baseName;
+                    }
+                }
+
+                const blob = await res.blob();
+                if (blob.type.startsWith('image/')) {
+                    attachment = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed to fetch attachment for Excel:", e);
+            }
+        } else if (originalUrl && originalUrl.startsWith('data:image')) {
+            attachment = originalUrl;
+            resolvedFilename = "Image.png";
+        }
+
+        // Return as any to allow extra properties
+        return { ...t, attachment, originalUrl, resolvedFilename } as any;
+    }));
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Financial Journal App';
     workbook.created = new Date();
@@ -107,7 +174,7 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
     });
 
     // Data
-    transactions.forEach((t, index) => {
+    processedTransactions.forEach((t, index) => {
         const row = sheetLog.addRow([
             new Date(t.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
             t.desc,
@@ -116,7 +183,7 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
             t.amount,
             t.currency || summary.currency,
             t.paymentLink || '',
-            '' // Attachment acts as placeholder for image
+            '' // Attachment acts as placeholder
         ]);
 
         // Conditional Styling for Type and Amount
@@ -133,7 +200,6 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
             amountCell.font = { color: { argb: 'FFBE123C' } };
         } else {
             typeCell.font = { color: { argb: 'FFB45309' } }; // Amber (Savings)
-            typeCell.font = { color: { argb: 'FFB45309' } }; // Amber (Savings)
             amountCell.font = { color: { argb: 'FFB45309' } };
         }
 
@@ -144,10 +210,22 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
             linkCell.font = { color: { argb: 'FF2563EB' }, underline: true }; // Blue
         }
 
+        // Attachment Cell (Link Logic)
+        if (t.originalUrl) {
+            const attachCell = row.getCell(8);
+            const fullUrl = t.originalUrl.startsWith('http') ? t.originalUrl : `${window.location.origin}${t.originalUrl}`;
+
+            // Use resolved filename or fallback "Attachment"
+            const displayName = t.resolvedFilename || "Attachment";
+
+            attachCell.value = { text: displayName, hyperlink: fullUrl };
+            attachCell.font = { color: { argb: 'FF2563EB' }, underline: true };
+        }
+
         // Embed Image if exists
         if (t.attachment) {
             try {
-                // Determine extension (hacky basic check, optimally regex looking for data:image/fmt)
+                // Determine extension
                 let ext: "png" | "jpeg" = "png";
                 if (t.attachment.startsWith("data:image/jpeg") || t.attachment.startsWith("data:image/jpg")) {
                     ext = "jpeg";
@@ -160,23 +238,18 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
                 });
 
                 // Add to sheet
-                // Note: 'tl' is 0-indexed column and row. 
-                // Row index in sheet depends on header. Header is row 6? No, sheetLog header is row 1?.
-                // sheetLog started fresh. Headers added at row 1.
-                // forEach index 0 -> Row 2
-                // So row index for image is index + 1
                 const imgRowIdx = index + 1;
 
                 sheetLog.addImage(imageId, {
                     tl: { col: 7, row: imgRowIdx }, // col 7 is 'Attachment'
-                    ext: { width: 120, height: 120 }
+                    ext: { width: 100, height: 100 },
+                    editAs: 'oneCell'
                 });
 
                 // Increase row height to fit image
-                row.height = 130;
+                row.height = 80;
             } catch (e) {
-                // Fallback text
-                row.getCell(8).value = "Has Image";
+                console.warn("Excel Image Error", e);
             }
         }
     });
@@ -190,7 +263,7 @@ export async function exportToExcel({ transactions, summary, categoryLookup }: E
         { width: 15 }, // Amount
         { width: 10 }, // Curr
         { width: 30 }, // Link
-        { width: 35 }  // Attach (Wider for image space)
+        { width: 30 }  // Attach
     ];
 
     // Write file
