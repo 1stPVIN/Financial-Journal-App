@@ -18,7 +18,7 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
     // PDF detection
-    const isPDF = src.startsWith("data:application/pdf") || src.toLowerCase().includes(".pdf") || (!src.startsWith("data:image"));
+    const isPDF = src.startsWith("data:application/pdf") || src.toLowerCase().includes(".pdf");
 
     const handleZoomIn = () => setScale(prev => Math.min(prev + 0.5, 5));
     const handleZoomOut = () => setScale(prev => Math.max(prev - 0.5, 0.5));

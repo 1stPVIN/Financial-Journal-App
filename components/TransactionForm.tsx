@@ -287,8 +287,8 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
 
                     <div className="space-y-4">
                         {/* Date & Desc */}
-                        <div className="flex gap-4">
-                            <div className="w-1/3">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="w-full sm:w-1/3">
                                 <DatePicker
                                     value={date}
                                     onChange={setDate}
@@ -305,7 +305,7 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                         </div>
 
                         {/* Amount & Currency & Category */}
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-4">
                             <div className="flex-1 flex gap-2">
                                 <Input
                                     type="number"

@@ -888,6 +888,7 @@ export default function Home() {
               startingBalance={monthlyStartingBalance}
               getCategory={getCategory}
               viewMode={viewMode}
+              rates={rates}
             />
           </div>
 

@@ -24,12 +24,14 @@ interface OverviewChartProps {
     currency: string;
     startingBalance?: number;
     getCategory?: (id: string) => Category | undefined;
+    getCategory?: (id: string) => Category | undefined;
     viewMode: "monthly" | "yearly" | "all";
+    rates?: Record<string, number> | null;
 }
 
 const COLORS = ['#047857', '#be123c', '#d4a373', '#1d4ed8', '#7e22ce', '#c2410c'];
 
-export function OverviewChart({ transactions, currency = "SAR", startingBalance = 0, getCategory, viewMode }: OverviewChartProps) {
+export function OverviewChart({ transactions, currency = "SAR", startingBalance = 0, getCategory, viewMode, rates }: OverviewChartProps) {
     const [chartType, setChartType] = useState<"bar" | "trend" | "pie">("bar");
 
     const data = useMemo(() => {
@@ -109,11 +111,16 @@ export function OverviewChart({ transactions, currency = "SAR", startingBalance 
         // 2. Map every transaction to a point in the chart
         // We do NOT group by day anymore, to show intraday movement.
         const points = sortedTransactions.map((t, index) => {
-            const val = t.type === 'income' ? t.amount : (t.type === 'expense' ? -t.amount : 0);
+            let amount = t.amount;
+            if (rates && t.currency && t.currency !== currency && rates[t.currency]) {
+                amount = t.amount / rates[t.currency];
+            }
+
+            const val = t.type === 'income' ? amount : (t.type === 'expense' ? -amount : 0);
 
             if (t.type === 'savings') {
                 // Savings acts as expense for "Net Balance" typically
-                runningBalance -= t.amount;
+                runningBalance -= amount;
             } else {
                 runningBalance += val;
             }

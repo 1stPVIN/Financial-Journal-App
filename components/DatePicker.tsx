@@ -87,8 +87,8 @@ export function DatePicker({ value, onChange, className }: DatePickerProps) {
     };
 
     const handleSelectDate = (day: number) => {
-        const newDate = new Date(viewYear, viewMonth, day);
-        const isoDate = newDate.toISOString().split('T')[0];
+        // Construct YYYY-MM-DD manually to avoid UTC timezone shift
+        const isoDate = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         onChange(isoDate);
         setIsOpen(false);
     };
