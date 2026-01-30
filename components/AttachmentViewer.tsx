@@ -76,9 +76,9 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
     return (
         <div className="relative flex flex-col h-full w-full bg-background/95 backdrop-blur-sm">
             {/* Toolbar */}
-            <div className="absolute top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent text-white">
+            <div className="relative z-50 p-4 flex justify-between items-center bg-background/95 border-b border-border shadow-sm text-foreground">
                 <div className="flex gap-2">
-                    <button onClick={onClose} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors">
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
                         <X size={20} />
                     </button>
                     <span className="text-sm font-medium self-center px-2 opacity-80">
@@ -89,14 +89,14 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
                 <div className="flex gap-2">
                     {!isPDF && (
                         <>
-                            <button onClick={handleZoomOut} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors" title="Zoom Out">
+                            <button onClick={handleZoomOut} className="p-2 rounded-full hover:bg-muted transition-colors" title="Zoom Out">
                                 <ZoomOut size={20} />
                             </button>
                             <span className="self-center min-w-[3ch] text-center text-xs">{Math.round(scale * 100)}%</span>
-                            <button onClick={handleZoomIn} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors" title="Zoom In">
+                            <button onClick={handleZoomIn} className="p-2 rounded-full hover:bg-muted transition-colors" title="Zoom In">
                                 <ZoomIn size={20} />
                             </button>
-                            <button onClick={handleReset} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors" title="Reset">
+                            <button onClick={handleReset} className="p-2 rounded-full hover:bg-muted transition-colors" title="Reset">
                                 <RotateCcw size={20} />
                             </button>
                         </>
