@@ -11,6 +11,7 @@ import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionItem } from "@/components/TransactionItem";
 import { CategoryManager } from "@/components/CategoryManager";
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { SortDropdown, sortTransactions, SortOption } from "@/components/SortDropdown";
 import { ExportMenu } from "@/components/ExportMenu";
 import { RecurringExpensesManager } from "@/components/RecurringExpensesManager";
 import { Category, Transaction, TransactionType, RecurringExpense } from "@/lib/types";
@@ -133,9 +134,13 @@ export default function Home() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("date_desc");
+
+  // Move getCategory here so it's available for filteredTransactions
+  const getCategory = (id: string) => categories.find(c => c.id === id);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    const filtered = transactions.filter(t => {
       // 1. Parse Transaction Date (ISO 8601 or Legacy)
       const tDate = new Date(t.date);
 
@@ -173,7 +178,10 @@ export default function Home() {
 
       return isTimeMatch && matchesSearch && matchesCategory;
     });
-  }, [transactions, currentDate, searchQuery, selectedFilter, viewMode]);
+
+    // Apply sorting
+    return sortTransactions(filtered, sortBy, (id) => getCategory(id)?.name || "");
+  }, [transactions, currentDate, searchQuery, selectedFilter, viewMode, sortBy]);
 
   // Navigation Handlers
   const handlePrevDate = () => {
@@ -217,20 +225,39 @@ export default function Home() {
   };
 
   const handleShare = async (base64Data: string) => {
-    if (navigator.share) {
-      try {
-        const res = await fetch(base64Data);
-        const blob = await res.blob();
-        const file = new File([blob], "receipt", { type: blob.type || "image/png" });
+    try {
+      const res = await fetch(base64Data);
+      const blob = await res.blob();
+      const extension = base64Data.startsWith("data:application/pdf") ? ".pdf" : ".png";
+      const mimeType = base64Data.startsWith("data:application/pdf") ? "application/pdf" : "image/png";
+      const file = new File([blob], `attachment${extension}`, { type: mimeType });
+
+      // Check if Web Share API is available and can share files
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: 'Transaction Document',
+          title: language === 'ar' ? 'مستند المعاملة' : 'Transaction Document',
         });
-      } catch (err) {
-        console.error("Error sharing:", err);
+      } else {
+        // Fallback: Download the file instead
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `attachment${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Show message
+        alert(language === 'ar'
+          ? 'تم تحميل الملف. يمكنك مشاركته يدوياً.'
+          : 'File downloaded. You can share it manually.');
       }
-    } else {
-      alert("Sharing is not supported on this device/browser.");
+    } catch (err) {
+      console.error("Error sharing:", err);
+      // Fallback to download
+      handleDownload(base64Data);
     }
   };
 
@@ -368,7 +395,6 @@ export default function Home() {
     { name: "Curr", income: totals.income, expense: totals.expense + totals.savings },
   ];
 
-  const getCategory = (id: string) => categories.find(c => c.id === id);
 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -501,7 +527,7 @@ export default function Home() {
                   </button>
 
                   <ExportMenu
-                    transactions={transactions}
+                    transactions={filteredTransactions}
                     summary={{
                       income: totals.income,
                       expense: totals.expense,
@@ -513,7 +539,7 @@ export default function Home() {
                     onExportExcel={() => {
                       import("@/lib/export").then(mod => {
                         mod.exportToExcel({
-                          transactions,
+                          transactions: filteredTransactions,
                           summary: {
                             income: totals.income,
                             expense: totals.expense,
@@ -606,7 +632,7 @@ export default function Home() {
                 onExportExcel={() => {
                   import("@/lib/export").then(mod => {
                     mod.exportToExcel({
-                      transactions,
+                      transactions: filteredTransactions,
                       summary: {
                         income: totals.income,
                         expense: totals.expense,
@@ -620,7 +646,7 @@ export default function Home() {
                 }}
                 onExportPDF={async () => {
                   const { generatePDF } = await import("@/lib/pdf-generator");
-                  generatePDF(transactions, {
+                  generatePDF(filteredTransactions, {
                     income: totals.income,
                     expense: totals.expense,
                     savings: totals.savings,
@@ -849,7 +875,7 @@ export default function Home() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-2xl font-serif text-primary">{t('transactionLog')}</h2>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                   <input
@@ -865,6 +891,11 @@ export default function Home() {
                   categories={categories}
                   selectedFilter={selectedFilter}
                   onSelect={setSelectedFilter}
+                />
+
+                <SortDropdown
+                  value={sortBy}
+                  onChange={setSortBy}
                 />
               </div>
             </div>
@@ -885,6 +916,8 @@ export default function Home() {
                     onEdit={() => handleEditClick(t)}
                     onDelete={() => setTransactions(prev => prev.filter(tr => tr.id !== t.id))}
                     onViewAttachment={() => setViewingAttachment(t.attachment || null)}
+                    onShareAttachment={t.attachment ? () => handleShare(t.attachment!) : undefined}
+                    onDownloadAttachment={t.attachment ? () => handleDownload(t.attachment!) : undefined}
                     exchangeRate={rates && t.currency && t.currency !== currency ? rates[t.currency] : undefined}
                     showYear={viewMode === 'all'}
                   />

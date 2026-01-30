@@ -2,7 +2,7 @@ import React from "react";
 import { Transaction, Category } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 import { iconMap } from "@/lib/constants";
-import { FilePenLine, Paperclip, CalendarDays, ExternalLink, X } from "lucide-react";
+import { FilePenLine, Paperclip, CalendarDays, ExternalLink, X, Share2, Download } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
 interface TransactionItemProps {
@@ -14,6 +14,8 @@ interface TransactionItemProps {
     onEdit: () => void;
     onDelete?: () => void;
     onViewAttachment: () => void;
+    onShareAttachment?: () => void;
+    onDownloadAttachment?: () => void;
 }
 
 export function TransactionItem({
@@ -24,7 +26,9 @@ export function TransactionItem({
     showYear = false,
     onEdit,
     onDelete,
-    onViewAttachment
+    onViewAttachment,
+    onShareAttachment,
+    onDownloadAttachment
 }: TransactionItemProps) {
     const { language } = useLanguage();
 
@@ -77,13 +81,33 @@ export function TransactionItem({
                             )}
 
                             {transaction.attachment && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onViewAttachment(); }}
-                                    className="text-muted-foreground hover:text-primary transition-colors p-1"
-                                    title="View Attachment"
-                                >
-                                    <Paperclip size={14} />
-                                </button>
+                                <div className="flex items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onViewAttachment(); }}
+                                        className="text-muted-foreground hover:text-primary transition-colors p-1"
+                                        title="View Attachment"
+                                    >
+                                        <Paperclip size={14} />
+                                    </button>
+                                    {onShareAttachment && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onShareAttachment(); }}
+                                            className="text-muted-foreground hover:text-blue-500 transition-colors p-1"
+                                            title="Share"
+                                        >
+                                            <Share2 size={14} />
+                                        </button>
+                                    )}
+                                    {onDownloadAttachment && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onDownloadAttachment(); }}
+                                            className="text-muted-foreground hover:text-emerald-500 transition-colors p-1"
+                                            title="Download"
+                                        >
+                                            <Download size={14} />
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>

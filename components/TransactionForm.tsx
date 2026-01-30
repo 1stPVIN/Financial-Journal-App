@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Check, ChevronDown, Paperclip, X, Image as ImageIcon, TrendingUp, TrendingDown, Wallet, Calendar, Coins } from "lucide-react";
+import { Plus, Check, ChevronDown, Paperclip, X, Image as ImageIcon, TrendingUp, TrendingDown, Wallet, Calendar, Coins, Upload, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Category, Transaction, TransactionType } from "@/lib/types";
 import { iconMap, CURRENCIES } from "@/lib/constants";
 import { useLanguage } from "@/lib/language-context";
+import { DatePicker } from "@/components/DatePicker";
 
 interface TransactionFormProps {
     categories: Category[];
@@ -29,10 +30,12 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const currencyRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
 
     // Filter categories by selected type
     const availableCategories = categories.filter(c => c.type === type);
@@ -85,16 +88,68 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Process file (used by file input, drag-drop, and paste)
+    const processFile = (file: File) => {
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf'];
+        if (!validTypes.includes(file.type)) {
+            return; // Ignore unsupported files
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setAttachment(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAttachment(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
+        if (file) processFile(file);
     };
+
+    // Drag and Drop handlers
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) processFile(file);
+    };
+
+    // Paste handler
+    useEffect(() => {
+        const handlePaste = (e: ClipboardEvent) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type.startsWith('image/') || item.type === 'application/pdf') {
+                    const file = item.getAsFile();
+                    if (file) {
+                        processFile(file);
+                        break;
+                    }
+                }
+            }
+        };
+
+        const form = formRef.current;
+        if (form) {
+            form.addEventListener('paste', handlePaste);
+        }
+        return () => {
+            if (form) {
+                form.removeEventListener('paste', handlePaste);
+            }
+        };
+    }, []);
 
     const removeAttachment = () => {
         setAttachment("");
@@ -135,7 +190,7 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
         }
     };
 
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
     return (
         <Card className="bg-background shadow-2xl border border-border rounded-xl">
@@ -143,7 +198,7 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                 <CardTitle className="text-lg font-serif">{t('newEntry')}</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
 
                     {/* Type Selector */}
                     <div className="grid grid-cols-3 gap-3 mb-6">
@@ -218,15 +273,10 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                         {/* Date & Desc */}
                         <div className="flex gap-4">
                             <div className="w-1/3">
-                                <div className="relative">
-                                    <Input
-                                        type="date"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                        className="pl-9 text-sm"
-                                    />
-                                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                </div>
+                                <DatePicker
+                                    value={date}
+                                    onChange={setDate}
+                                />
                             </div>
                             <div className="flex-1">
                                 <Input
@@ -356,15 +406,53 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
                             </div>
                         </div>
 
-                        {attachment && (
-                            <div className="flex items-center gap-2 p-2 bg-secondary/30 rounded-md border border-secondary text-xs text-muted-foreground">
-                                <ImageIcon size={14} />
-                                <span className="flex-1 truncate">{t('attachmentAdded')}</span>
-                                <button type="button" onClick={removeAttachment} className="hover:text-destructive">
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        )}
+                        {/* Drag & Drop Zone */}
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            className={cn(
+                                "relative border-2 border-dashed rounded-lg p-4 transition-all duration-200 text-center",
+                                isDragging
+                                    ? "border-primary bg-primary/5"
+                                    : attachment
+                                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10"
+                                        : "border-border hover:border-muted-foreground/50"
+                            )}
+                        >
+                            {attachment ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    {attachment.startsWith('data:application/pdf') ? (
+                                        <FileText size={24} className="text-rose-500" />
+                                    ) : (
+                                        <ImageIcon size={24} className="text-emerald-500" />
+                                    )}
+                                    <span className="text-sm font-medium">
+                                        {attachment.startsWith('data:application/pdf')
+                                            ? (language === 'ar' ? 'ملف PDF مرفق' : 'PDF attached')
+                                            : t('attachmentAdded')
+                                        }
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={removeAttachment}
+                                        className="p-1 hover:bg-destructive/10 rounded-full hover:text-destructive transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                    <Upload size={20} className={cn(isDragging && "text-primary animate-bounce")} />
+                                    <p className="text-xs">
+                                        {language === 'ar'
+                                            ? 'اسحب وأفلت أو Ctrl+V للصق'
+                                            : 'Drag & drop or Ctrl+V to paste'
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="pt-4 flex justify-end">
