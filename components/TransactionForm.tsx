@@ -102,9 +102,10 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
             setIsUploading(true);
             const url = await uploadFile(file);
             setAttachment(url);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Upload failed:", error);
-            alert(language === 'ar' ? 'فشل رفع الملف' : 'File upload failed');
+            const msg = error.message || "Unknown error";
+            alert(language === 'ar' ? `فشل رفع الملف: ${msg}` : `File upload failed: ${msg}`);
         } finally {
             setIsUploading(false);
         }
