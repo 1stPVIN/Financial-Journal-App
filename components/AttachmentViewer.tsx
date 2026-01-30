@@ -16,9 +16,16 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [viewMode, setViewMode] = useState<'image' | 'pdf' | 'unknown'>('unknown');
 
-    // PDF detection
-    const isPDF = src.startsWith("data:application/pdf") || src.toLowerCase().includes(".pdf");
+    useEffect(() => {
+        // Initial guess based on string
+        if (src.startsWith("data:application/pdf") || src.toLowerCase().includes(".pdf")) {
+            setViewMode('pdf');
+        } else {
+            setViewMode('image');
+        }
+    }, [src]);
 
     const handleZoomIn = () => setScale(prev => Math.min(prev + 0.5, 5));
     const handleZoomOut = () => setScale(prev => Math.max(prev - 0.5, 0.5));
@@ -55,18 +62,16 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
         };
         // Add listener to specific element if possible, but window for now safe for modal
         window.addEventListener('wheel', handleWheel, { passive: false });
+        // Clean up
         return () => window.removeEventListener('wheel', handleWheel);
     }, []);
 
     // Helper to convert base64 to blob url for PDF iframe if needed
     const getSrc = () => {
-        if (src.startsWith('data:')) {
-            // For PDF data URI, iframe works well usually.
-            // For Image data URI, img works.
-            return src;
-        }
         return src;
     };
+
+    const isPDF = viewMode === 'pdf';
 
     return (
         <div className="relative flex flex-col h-full w-full bg-background/95 backdrop-blur-sm">
@@ -126,6 +131,10 @@ export function AttachmentViewer({ src, onClose, onDownload, onShare }: Attachme
                             alt="Attachment"
                             draggable={false}
                             className="max-w-[90vw] max-h-[80vh] object-contain shadow-2xl rounded-md"
+                            onError={() => {
+                                // If image fails to load, assume it might be a document/PDF and switch mode
+                                setViewMode('pdf');
+                            }}
                         />
                     </div>
                 )}
