@@ -23,6 +23,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CurrencyConverter } from "@/components/CurrencyConverter";
 import { Banknote } from "lucide-react";
 import { LockScreen } from "@/components/LockScreen";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { useExchangeRates } from "@/lib/hooks";
 
 import { useLanguage } from "@/lib/language-context";
@@ -948,55 +949,15 @@ export default function Home() {
         </div >
 
         <Dialog open={!!viewingAttachment} onOpenChange={(open) => !open && setViewingAttachment(null)}>
-          <DialogContent className="sm:max-w-4xl w-full p-0 overflow-hidden bg-transparent border-none shadow-none">
-            <div className="relative bg-background p-4 rounded-lg shadow-xl border border-border">
-              <button
-                onClick={() => setViewingAttachment(null)}
-                className="absolute right-4 top-4 p-1 rounded-full bg-black/10 hover:bg-black/20 text-foreground z-20"
-              >
-                <X size={16} />
-              </button>
-
-              {viewingAttachment && (
-                <div className="flex flex-col gap-4">
-                  <div className="rounded-lg overflow-hidden border border-border bg-card text-center min-h-[400px] flex items-center justify-center relative">
-                    {/* Handle PDF (Base64 or URL) */}
-                    {(viewingAttachment.startsWith("data:application/pdf") || viewingAttachment.toLowerCase().includes(".pdf") || viewingAttachment.includes("/api/file/")) ? (
-                      // We can't easily detect PDF from a URL without headers, but for now assuming if not image it's PDF or we treat as generic
-                      // Actually, for API URLs, we can use <object> or <iframe>. 
-                      // Let's rely on error handling or assume images unless known PDF
-                      // Better: check if startswith data:application/pdf OR (it is a url and we can try to load it).
-                      // Simplest check: if it is NOT data:image, treat as PDF/Document for viewer.
-                      !viewingAttachment.startsWith("data:image") ? (
-                        <iframe
-                          src={viewingAttachment.startsWith("data:") ? URL.createObjectURL(base64ToBlob(viewingAttachment)) : viewingAttachment}
-                          className="w-full h-[75vh]"
-                          title="Document Viewer"
-                        />
-                      ) : (
-                        <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
-                      )
-                    ) : (
-                      <img src={viewingAttachment} alt="Attachment" className="max-h-[75vh] w-full object-contain mx-auto" />
-                    )}
-                  </div>
-                  <div className="flex justify-center gap-4">
-                    <button
-                      onClick={() => handleDownload(viewingAttachment)}
-                      className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium hover:bg-secondary/80"
-                    >
-                      <Download size={16} /> Download
-                    </button>
-                    <button
-                      onClick={() => handleShare(viewingAttachment)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90"
-                    >
-                      <Share2 size={16} /> Share
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          <DialogContent className="max-w-[100vw] h-[100vh] w-[100vw] p-0 border-none bg-transparent shadow-none">
+            {viewingAttachment && (
+              <AttachmentViewer
+                src={viewingAttachment}
+                onClose={() => setViewingAttachment(null)}
+                onDownload={() => handleDownload(viewingAttachment)}
+                onShare={() => handleShare(viewingAttachment)}
+              />
+            )}
           </DialogContent>
         </Dialog>
 

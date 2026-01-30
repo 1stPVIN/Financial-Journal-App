@@ -98,6 +98,12 @@ export function TransactionForm({ onAdd, categories, defaultType = "expense", in
             return;
         }
 
+        // Check Size (Max 4MB to be safe for Vercel 4.5MB limit)
+        if (file.size > 4 * 1024 * 1024) {
+            alert(language === 'ar' ? 'حجم الملف كبير جداً (الحد الأقصى 4 ميجابايت)' : 'File too large (Max 4MB)');
+            return;
+        }
+
         try {
             setIsUploading(true);
             const url = await uploadFile(file);
