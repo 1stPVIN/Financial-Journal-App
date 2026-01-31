@@ -1,6 +1,6 @@
 "use client";
 
-import { X, CalendarClock, Tag, Settings2, FileSpreadsheet, FileText, Banknote, LogOut, Cloud, CloudOff } from "lucide-react";
+import { X, CalendarClock, Tag, Settings2, FileSpreadsheet, FileText, Banknote, LogOut, Cloud, CloudOff, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLanguage } from "@/lib/language-context";
@@ -14,6 +14,7 @@ interface MobileMenuProps {
     onOpenConverter?: () => void;
     onExportExcel: () => void;
     onExportPDF: () => void;
+    onOpenHelp: () => void;
     user: any;
     onSignOut: () => void;
     onLogin: () => void;
@@ -28,6 +29,7 @@ export function MobileMenu({
     onOpenConverter,
     onExportExcel,
     onExportPDF,
+    onOpenHelp,
     user,
     onSignOut,
     onLogin
@@ -148,6 +150,13 @@ export function MobileMenu({
                                         <div className="flex-1">
                                             <div className="font-medium text-sm">{t('exportPdf')}</div>
                                             <div className="text-xs text-muted-foreground">Print financial report</div>
+                                        </div>
+                                    </button>
+                                    <button onClick={() => { onClose(); onOpenHelp(); }} className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-left rtl:text-right">
+                                        <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full text-blue-700 dark:text-blue-400"><HelpCircle size={20} /></div>
+                                        <div className="flex-1">
+                                            <div className="font-medium text-sm">{t('helpCenter')}</div>
+                                            <div className="text-xs text-muted-foreground">{t('howToUse')}</div>
                                         </div>
                                     </button>
                                 </div>

@@ -30,8 +30,9 @@ import { useLanguage } from "@/lib/language-context";
 import { useSyncedState } from "@/lib/sync-hooks";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { AuthComponent } from "@/components/AuthComponent";
-import { User, LogOut, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { User, LogOut, Cloud, CloudOff, Loader2, CircleHelp } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Need Popover for Auth Menu
+import { HelpDialog } from "@/components/HelpDialog";
 
 export default function Home() {
   const { t, language } = useLanguage();
@@ -43,6 +44,7 @@ export default function Home() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showConverter, setShowConverter] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false); // NEW AUTH DIALOG STATE
 
   // Lock Check Effect
@@ -475,26 +477,26 @@ export default function Home() {
                 </button>
 
                 <div>
-                  <h1 className="text-2xl md:text-4xl font-serif text-primary mb-1">{t('financialJournal')}</h1>
+                  <h1 className="text-xl md:text-2xl font-serif text-primary mb-1">{t('financialJournal')}</h1>
                   {/* Date Navigation */}
-                  <div className="flex items-center gap-4 bg-card/50 backdrop-blur-sm px-4 py-2 rounded-full border border-border shadow-sm min-h-[42px]">
+                  <div className="flex items-center gap-1 bg-card/50 backdrop-blur-sm px-1.5 py-1 rounded-full border border-border shadow-sm min-h-[32px] w-fit">
                     {viewMode !== 'all' && (
                       <button
                         onClick={handlePrevDate}
-                        className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                        className="p-0.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
                       >
-                        <ChevronLeft size={20} className="rtl:rotate-180" />
+                        <ChevronLeft size={16} className="rtl:rotate-180" />
                       </button>
                     )}
-                    <span className="text-lg font-medium font-serif min-w-[120px] text-center">
+                    <span className="text-xs md:text-sm font-medium font-serif px-2">
                       {headerDateLabel}
                     </span>
                     {viewMode !== 'all' && (
                       <button
                         onClick={handleNextDate}
-                        className="p-1 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                        className="p-0.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
                       >
-                        <ChevronRight size={20} className="rtl:rotate-180" />
+                        <ChevronRight size={16} className="rtl:rotate-180" />
                       </button>
                     )}
                   </div>
@@ -505,20 +507,20 @@ export default function Home() {
                   <div className="flex gap-1 mr-1 rtl:mr-0 rtl:ml-1">
                     {/* SYNC / AUTH STATUS */}
                     {user ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => setShowAuthDialog(true)}
-                          className="flex items-center gap-2 px-2 py-1.5 md:px-3 rounded-full hover:bg-muted transition-colors border border-transparent hover:border-border"
+                          className="flex items-center gap-1 px-1 py-1 rounded-full hover:bg-muted transition-colors border border-transparent hover:border-border"
                           title={user.email || "Profile"}
                         >
-                          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                             {user.email?.[0].toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium hidden xl:inline-block max-w-[150px] truncate">{user.email}</span>
+                          {/* Email hidden to save space, visible on hover via title */}
                         </button>
 
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs font-medium">
-                          {isSyncing ? <Loader2 size={12} className="animate-spin" /> : <Cloud size={12} />}
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[10px] font-medium">
+                          {isSyncing ? <Loader2 size={10} className="animate-spin" /> : <Cloud size={10} />}
                           <span className="hidden xl:inline">{isSyncing ? "Syncing..." : "Synced"}</span>
                         </div>
                       </div>
@@ -527,7 +529,7 @@ export default function Home() {
                         <PopoverTrigger asChild>
                           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors">
                             <CloudOff size={14} />
-                            <span>Login to Sync</span>
+                            <span>Login</span>
                           </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 p-0" align="end">
@@ -538,6 +540,15 @@ export default function Home() {
                   </div>
 
                   {/* Widgets removed from header as requested, now inline */}
+
+                  {/* Widgets removed from header as requested, now inline */}
+                  <button
+                    onClick={() => setShowHelp(true)}
+                    className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-black/5"
+                    title={t('helpCenter')}
+                  >
+                    <CircleHelp size={20} />
+                  </button>
 
                   <button
                     onClick={() => setShowSettings(true)}
@@ -610,31 +621,31 @@ export default function Home() {
                   {uiMode === "standard" ? (
                     <button
                       onClick={() => openForm()}
-                      className="bg-primary text-primary-foreground px-3 py-2 lg:px-4 lg:py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all shadow-md glow-primary"
+                      className="bg-primary text-primary-foreground px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium flex items-center gap-2 transition-all shadow-md glow-primary whitespace-nowrap"
                       title={t('newEntry')}
                     >
                       <Plus size={16} />
                       <span className="hidden lg:inline">{t('newEntry')}</span>
                     </button>
                   ) : (
-                    <div className="flex bg-muted p-1 rounded-full gap-1 shadow-inner">
+                    <div className="flex bg-muted p-0.5 rounded-full gap-0.5 shadow-inner shrink-0">
                       <button
                         onClick={() => openForm('income')}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold text-emerald-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-emerald"
+                        className="px-2 py-1 rounded-full text-[10px] lg:text-xs font-semibold text-emerald-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-emerald whitespace-nowrap"
                       >
-                        <Plus size={12} /> {t('income')}
+                        <Plus size={10} /> {t('income')}
                       </button>
                       <button
                         onClick={() => openForm('expense')}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold text-rose-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-rose"
+                        className="px-2 py-1 rounded-full text-[10px] lg:text-xs font-semibold text-rose-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-rose whitespace-nowrap"
                       >
-                        <TrendingDown size={12} /> {t('expense')}
+                        <TrendingDown size={10} /> {t('expense')}
                       </button>
                       <button
                         onClick={() => openForm('savings')}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold text-amber-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-amber"
+                        className="px-2 py-1 rounded-full text-[10px] lg:text-xs font-semibold text-amber-700 hover:bg-background transition-all flex items-center gap-1 hover:shadow-sm glow-amber whitespace-nowrap"
                       >
-                        <Wallet size={12} /> {t('savings')}
+                        <Wallet size={10} /> {t('savings')}
                       </button>
                     </div>
                   )}
@@ -682,6 +693,7 @@ export default function Home() {
                   }
                 }}
                 onLogin={() => setShowAuthDialog(true)}
+                onOpenHelp={() => setShowHelp(true)}
               />
 
             </div>
@@ -722,6 +734,12 @@ export default function Home() {
                   }
                   window.location.reload();
                 }}
+              />
+            )}
+            {showHelp && (
+              <HelpDialog
+                isOpen={showHelp}
+                onClose={() => setShowHelp(false)}
               />
             )}
           </AnimatePresence>

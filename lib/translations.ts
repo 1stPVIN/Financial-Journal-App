@@ -112,7 +112,17 @@ export const translations = {
         // Errors/Messages
         pdfGenerationFailed: "PDF Generation Failed",
         couldNotGeneratePdf: "Could not generate PDF Report. Error:",
-        login: "Login"
+        login: "Login",
+
+        // Help
+        helpCenter: "Help Center",
+        searchHelp: "Search help topics...",
+        howToUse: "How to use",
+        faq: "FAQ",
+        readMore: "Read more",
+        readLess: "Read less",
+        noResults: "No results found for",
+        tryDifferent: "Try a different keyword."
     },
     ar: {
         // General
@@ -225,6 +235,16 @@ export const translations = {
         // Errors/Messages
         pdfGenerationFailed: "فشل إنشاء PDF",
         couldNotGeneratePdf: "تعذر إنشاء تقرير PDF. خطأ:",
-        login: "تسجيل الدخول"
+        login: "تسجيل الدخول",
+
+        // Help
+        helpCenter: "مركز المساعدة",
+        searchHelp: "بحث في المساعدة...",
+        howToUse: "طريقة الاستخدام",
+        faq: "الأسئلة الشائعة",
+        readMore: "اقرأ المزيد",
+        readLess: "اقرأ أقل",
+        noResults: "لا توجد نتائج لـ",
+        tryDifferent: "جرب كلمة مفتاحية أخرى."
     }
 };
