@@ -9,7 +9,7 @@ export interface Category {
 }
 
 export interface Transaction {
-    id: number;
+    id: string;
     date: string;
     desc: string;
     categoryId: string; // Link to Category

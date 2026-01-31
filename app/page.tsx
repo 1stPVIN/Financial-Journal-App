@@ -216,13 +216,14 @@ export default function Home() {
     return currentDate.getFullYear().toString();
   }, [currentDate, viewMode, t]);
 
-  const handleTransactionSubmit = (data: { type: TransactionType, amount: number, desc: string, categoryId: string, date: string, paymentLink?: string, attachment?: string }) => {
+  const handleTransactionSubmit = (data: { type: TransactionType, amount: number, desc: string, categoryId: string, date: string, paymentLink?: string, attachment?: string, currency?: string }) => {
     if (editingTransaction) {
-
       setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? { ...t, ...data } : t));
       setEditingTransaction(null);
     } else {
-      setTransactions(prev => [{ ...data, id: Math.random() }, ...prev]);
+      // Use crypto.randomUUID if available, else fallback to timestamp + random
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setTransactions(prev => [{ ...data, id: newId }, ...prev]);
     }
     setShowForm(false);
   };
@@ -306,7 +307,9 @@ export default function Home() {
 
   // Recurring Logic
   const addRecurring = (expense: Omit<RecurringExpense, "id">) => {
-    setRecurringExpenses(prev => [...prev, { ...expense, id: Math.random().toString() }]);
+    // Generate string ID for recurring
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `r_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setRecurringExpenses(prev => [...prev, { ...expense, id: newId }]);
   };
 
   const updateRecurring = (id: string, updates: Partial<RecurringExpense>) => {
@@ -322,7 +325,7 @@ export default function Home() {
     const today = new Date().toISOString().split('T')[0];
 
     const newTransactions = toAdd.map(e => ({
-      id: Math.random(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t_rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       date: today,
       desc: e.desc,
       categoryId: e.categoryId,

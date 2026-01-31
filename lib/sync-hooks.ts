@@ -143,12 +143,15 @@ export function useSyncedState<T extends { id: string | number }>(
                     const rows = nextState.map(item => ({
                         ...item,
                         user_id: user.id,
-                        id: String(item.id)
+                        id: item.id // ID is already string now
                     }));
 
                     // Fire and forget catch
                     supabase.from(tableName).upsert(rows).then(({ error }) => {
-                        if (error) console.error(`Background Sync Upsert Error (${tableName}):`, error);
+                        if (error) {
+                            console.error(`Background Sync Upsert Error (${tableName}):`, error);
+                            // Optional: Retry mechanism could go here
+                        }
                     });
                 } else if (nextState.length === 0 && current.length > 0 && idsToDelete.length === 0) {
                     // Edge case: Cleared all items but logic above handled deletions?
