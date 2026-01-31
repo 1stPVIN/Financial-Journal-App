@@ -26,8 +26,7 @@ export function HelpDialog({ isOpen, onClose }: HelpDialogProps) {
             const title = topic.title[language].toLowerCase();
             const desc = topic.description[language].toLowerCase();
             const contentMatch = topic.sections.some(s =>
-                s.title[language].toLowerCase().includes(query) ||
-                s.content[language].toLowerCase().includes(query)
+                s.title[language].toLowerCase().includes(query)
             );
             const keywordMatch = topic.keywords.some(k => k.toLowerCase().includes(query));
 
